@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(pnpm *)"
+      "PowerShell(pnpm *)",
+      "Bash(pnpm install *)"
     ]
   }
 }
