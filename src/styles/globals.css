@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tenant theme tokens are injected as CSS variables by the page layout component.
+   Fallback values ensure the app looks reasonable without a tenant theme. */
+:root {
+  --color-primary: 0 102 204;       /* #0066cc */
+  --color-secondary: 0 68 153;      /* #004499 */
+  --color-accent: 255 102 0;        /* #ff6600 */
+  --font-sans: "Inter", system-ui, sans-serif;
+  --border-radius: 0.5rem;
+}
+
+/* Strip browser defaults for consistent cross-tenant rendering. */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
