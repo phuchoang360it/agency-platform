@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import { headers } from 'next/headers'
 import type { Metadata } from 'next'
 import { resolveTenant } from '@/lib/tenant/resolveTenant'
 import { isLocaleEnabled } from '@/lib/i18n/resolveLocale'
@@ -7,6 +6,7 @@ import { generateMetadata as buildMeta } from '@/lib/seo/generateMetadata'
 import { getPayloadClient } from '@/lib/payload'
 import { TenantPageRenderer } from '@/components/layouts/TenantPageRenderer'
 import type { Page } from '@/payload-types'
+import type { PageType } from '@/lib/tenant/types'
 
 // Dev-only preview route: /tenant/<domain>/<locale>/[[...slug]]
 // This mirrors the main catch-all but reads the domain from the URL param
@@ -69,7 +69,7 @@ export default async function DevPreviewPage({ params }: { params: Promise<Param
     where: {
       and: [
         { slug: { equals: slugStr } },
-        { 'tenant.value': { equals: tenantId } },
+        { tenant: { equals: tenantId } },
       ],
     },
     locale: locale as 'de' | 'en' | 'vi',
@@ -87,6 +87,11 @@ export default async function DevPreviewPage({ params }: { params: Promise<Param
         <p className="mt-2">Run: <code className="bg-gray-100 px-2 py-1 rounded">pnpm tenant:seed {config.slug}</code></p>
       </div>
     )
+  }
+
+  // Gate on per-tenant enabled page types (e.g. 'blog' disabled for Acme).
+  if (page.pageType && !config.enabledPages.includes(page.pageType as PageType)) {
+    notFound()
   }
 
   return <TenantPageRenderer config={config} page={page} locale={locale} />

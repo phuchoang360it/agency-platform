@@ -12,6 +12,17 @@
  * Idempotent: re-running updates rather than duplicates.
  */
 
+// Load .env.local before Payload initializes. Payload's internal loadEnv
+// relies on @next/env which may not resolve under pnpm strict hoisting.
+// Using Node 20.6+ process.loadEnvFile() bypasses that dependency entirely.
+import { existsSync } from 'fs'
+const envFile = '.env.local'
+if (existsSync(envFile)) {
+  process.loadEnvFile(envFile)
+} else {
+  console.warn(`Warning: ${envFile} not found — using existing process.env values.`)
+}
+
 import path from 'path'
 import { getPayload } from 'payload'
 import { TenantConfigSchema, type TenantConfig } from '../src/lib/tenant/types'

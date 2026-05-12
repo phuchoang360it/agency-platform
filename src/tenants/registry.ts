@@ -10,9 +10,11 @@ import { TenantConfigSchema } from '@/lib/tenant/types'
 // Do not import Node.js-only modules here.
 
 import fixtureConfig from './__fixture__/tenant.config'
+import acmeConfig from './acme/tenant.config'
 
 const rawConfigs: TenantConfig[] = [
   fixtureConfig,
+  acmeConfig,
 ]
 
 // Validate every config at module-load time. A bad config throws immediately

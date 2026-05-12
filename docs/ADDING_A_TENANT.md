@@ -118,3 +118,65 @@ http://localhost:3000/tenant/acme.com/en/about
 - [ ] Dev preview works at `/tenant/acme.com/<locale>`
 - [ ] Admin shows tenant in dropdown
 - [ ] (Prod) DNS configured and SSL active
+
+---
+
+## Example: Acme (Phase 2 reference implementation)
+
+`src/tenants/acme/` is the canonical Phase 2 example. Use it as a template for new tenants.
+
+### Design choices and why
+
+**Locales: `['en', 'de']`, NOT `'vi'`**
+Proves the per-tenant locale gate: `GET /tenant/acme.com/vi/anything` returns 404. The platform stores content for all three locales in Payload; the frontend enforces the enabled subset.
+
+**Enabled pages: `['home', 'about', 'services', 'contact']`, NOT `'blog'`**
+Proves the page-type gate added in Phase 2: even if a `blog` page document existed in the DB for this tenant, the page component would call `notFound()` because `'blog' ∉ config.enabledPages`.
+
+**Theme: blue-800 primary, amber-400 accent**
+CSS vars injected by `TenantPageRenderer → buildThemeCssVars`. Tailwind utilities `bg-primary`, `text-accent`, `rounded-tenant` consume these vars. Each tenant has its own design — no shared layout components.
+
+**Blocks used (all existing, no new blocks needed)**
+- Home: Hero → FeatureGrid(3-col) → CTA
+- About: Hero → RichText
+- Services: Hero → FeatureGrid(2-col) → CTA
+- Contact: RichText (address/phone/email) → CTA (mailto: link)
+
+**Seed is idempotent**
+Re-running `pnpm tenant:seed acme` updates existing records rather than duplicating them. The upsert pattern queries by `slug` + `tenant.value` before deciding create vs update.
+
+**Media seeding**
+Three Picsum images are fetched and uploaded to MinIO. If MinIO is not running, the seed logs a warning and continues — pages seed successfully without images.
+
+### Acme tenant config (summary)
+
+```ts
+{
+  slug: 'acme',
+  name: 'Acme GmbH',
+  domains: ['acme.com', 'www.acme.com'],
+  locales: { enabled: ['en', 'de'], default: 'en', omitDefaultPrefix: false },
+  theme: { primaryColor: '#1e40af', secondaryColor: '#1e3a8a', accentColor: '#f59e0b',
+           fontFamily: 'Inter, sans-serif', borderRadius: '0.5rem' },
+  enabledPages: ['home', 'about', 'services', 'contact'],
+  navigation: [...],  // 4 items, en + de labels
+}
+```
+
+### Running the full verification
+
+```bash
+docker compose up -d          # Postgres + MinIO
+pnpm tenant:seed acme         # Seed DB + media
+pnpm dev                      # Start Next.js + Payload
+
+# Spot checks
+open http://localhost:3000/tenant/acme.com/en          # blue theme, English
+open http://localhost:3000/tenant/acme.com/de          # German
+open http://localhost:3000/tenant/acme.com/vi          # must 404
+open http://localhost:3000/tenant/acme.com/en/blog     # must 404
+
+# Tests
+pnpm test           # Vitest unit tests (includes acmeTenantConfig.test.ts)
+pnpm test:e2e       # Playwright (requires running dev server + seeded DB)
+```

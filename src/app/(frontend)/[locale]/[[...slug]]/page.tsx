@@ -9,6 +9,7 @@ import { buildTag } from '@/lib/revalidation/tags'
 import { getPayloadClient } from '@/lib/payload'
 import { TenantPageRenderer } from '@/components/layouts/TenantPageRenderer'
 import type { Page } from '@/payload-types'
+import type { PageType } from '@/lib/tenant/types'
 import { unstable_cache } from 'next/cache'
 
 type Params = {
@@ -23,7 +24,7 @@ async function getPage(tenantId: string, slugStr: string, locale: string): Promi
     where: {
       and: [
         { slug: { equals: slugStr } },
-        { 'tenant.value': { equals: tenantId } },
+        { tenant: { equals: tenantId } },
         { _status: { equals: 'published' } },
       ],
     },
@@ -101,6 +102,11 @@ export default async function TenantPage({ params }: { params: Promise<Params> }
     notFound()
   }
 
+  // Gate on per-tenant enabled page types (e.g. 'blog' disabled for Acme).
+  if (page.pageType && !config.enabledPages.includes(page.pageType as PageType)) {
+    notFound()
+  }
+
   return (
     <TenantPageRenderer config={config} page={page} locale={locale} />
   )
@@ -111,15 +117,42 @@ export async function generateStaticParams(): Promise<Array<{ locale: string; sl
   const configs = getAllTenantConfigs()
   const params: Array<{ locale: string; slug: string[] }> = []
 
-  for (const config of configs) {
-    for (const locale of config.locales.enabled) {
-      // Home page (empty slug)
-      params.push({ locale, slug: [] })
-    }
-  }
+  try {
+    const payload = await getPayloadClient()
 
-  // For a full build, query Payload for all published pages per tenant.
-  // Skipped here to keep Phase 1 fast — add in Phase 2 when tenants have content.
+    for (const config of configs) {
+      const tenantResult = await payload.find({
+        collection: 'tenants',
+        where: { slug: { equals: config.slug } },
+        limit: 1,
+      })
+      const tenantId = tenantResult.docs[0]?.id
+      if (!tenantId) continue
+
+      for (const locale of config.locales.enabled) {
+        const pages = await payload.find({
+          collection: 'pages',
+          where: {
+            and: [
+              { tenant: { equals: tenantId } },
+              { _status: { equals: 'published' } },
+            ],
+          },
+          locale: locale as 'de' | 'en' | 'vi',
+          limit: 200,
+        })
+
+        for (const page of pages.docs as Page[]) {
+          params.push({
+            locale,
+            slug: page.slug === 'home' ? [] : [page.slug],
+          })
+        }
+      }
+    }
+  } catch {
+    // DB not available at build time — fall back to empty (pages rendered on demand).
+  }
 
   return params
 }

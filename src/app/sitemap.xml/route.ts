@@ -33,7 +33,7 @@ export async function GET(): Promise<NextResponse> {
         collection: 'pages',
         where: {
           and: [
-            { 'tenant.value': { equals: tenantId } },
+            { tenant: { equals: tenantId } },
             { _status: { equals: 'published' } },
           ],
         },

@@ -51,7 +51,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
     where: {
       and: [
         { slug: { equals: 'home' } },
-        { 'tenant.value': { equals: tenantId } },
+        { tenant: { equals: tenantId } },
       ],
     },
     locale: 'en',
@@ -86,7 +86,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
       title: 'Fixture Tenant — Home',
       description: 'Platform scaffold smoke test.',
     },
-    tenant: { relationTo: 'tenants', value: tenantId },
+    tenant: Number(tenantId),
     _status: 'published' as const,
   }
 
@@ -102,7 +102,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
     where: {
       and: [
         { slug: { equals: 'about' } },
-        { 'tenant.value': { equals: tenantId } },
+        { tenant: { equals: tenantId } },
       ],
     },
     locale: 'en',
@@ -121,7 +121,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
       },
     ],
     meta: { title: 'About — Fixture Tenant' },
-    tenant: { relationTo: 'tenants', value: tenantId },
+    tenant: Number(tenantId),
     _status: 'published' as const,
   }
 

@@ -44,6 +44,7 @@
     ]
   },
   "devDependencies": {
+    "@next/env": "^16.2.6",
     "@playwright/test": "^1.47.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",

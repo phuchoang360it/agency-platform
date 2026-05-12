@@ -95,6 +95,28 @@ export default buildConfig({
     }),
   ],
 
+  // ── Init ──────────────────────────────────────────────────────────────────
+  onInit: async (payload) => {
+    const { totalDocs } = await payload.find({
+      collection: 'users',
+      limit: 1,
+      pagination: false,
+    })
+    if (totalDocs === 0) {
+      const email = process.env.PAYLOAD_CMS_ROOT_EMAIL
+      const password = process.env.PAYLOAD_CMS_ROOT_PASSWORD
+      if (!email || !password) {
+        payload.logger.warn('PAYLOAD_CMS_ROOT_EMAIL or PAYLOAD_CMS_ROOT_PASSWORD not set — skipping root user seed')
+        return
+      }
+      await payload.create({
+        collection: 'users',
+        data: { email, password, roles: ['super-admin'] },
+      })
+      payload.logger.info(`Root user created: ${email}`)
+    }
+  },
+
   // ── General ────────────────────────────────────────────────────────────────
   secret: process.env.PAYLOAD_SECRET ?? '',
   serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL ?? 'http://localhost:3000',

@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 // Shown at http://localhost:3000 when no tenant config is registered in the registry.
 // This should never appear in production (every domain should resolve to a tenant).
 export function NoTenantsPage() {
@@ -18,12 +20,12 @@ export function NoTenantsPage() {
           <p>localhost:3000/tenant/__fixture__.test/en</p>
         </div>
         <div className="mt-8">
-          <a
+          <Link
             href="/admin"
             className="inline-block px-6 py-3 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors"
           >
             Open Admin →
-          </a>
+          </Link>
         </div>
       </div>
     </main>
