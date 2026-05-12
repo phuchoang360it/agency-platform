@@ -17,7 +17,7 @@ export function FeatureGridComponent({ heading, features, columns = '3', classNa
         {heading && (
           <h2 className="text-3xl font-bold text-gray-900 text-center mb-12">{heading}</h2>
         )}
-        <div className={`grid gap-8 ${colClasses[columns] ?? colClasses['3']}`}>
+        <div className={`grid gap-8 ${colClasses[columns ?? '3']}`}>
           {features?.map((feature, i) => (
             <div key={i} className="flex flex-col gap-2 p-6 border border-gray-200 rounded-tenant">
               {feature.icon && <span className="text-2xl">{feature.icon}</span>}

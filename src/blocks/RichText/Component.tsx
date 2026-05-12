@@ -15,7 +15,7 @@ export function RichTextComponent({ content, maxWidth = 'prose', className }: Pr
   // Phase 2 will wire up @payloadcms/richtext-lexical's React renderer.
   return (
     <section className={`px-6 py-12 ${className ?? ''}`} data-block="rich-text">
-      <div className={`mx-auto prose prose-gray ${maxWidthClasses[maxWidth] ?? maxWidthClasses['prose']}`}>
+      <div className={`mx-auto prose prose-gray ${maxWidthClasses[maxWidth ?? 'prose']}`}>
         {content ? (
           <pre className="text-xs text-gray-400">{JSON.stringify(content, null, 2)}</pre>
         ) : (

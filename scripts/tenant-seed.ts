@@ -14,7 +14,7 @@
 
 import path from 'path'
 import { getPayload } from 'payload'
-import { TenantConfigSchema } from '../src/lib/tenant/types'
+import { TenantConfigSchema, type TenantConfig } from '../src/lib/tenant/types'
 
 const slug = process.argv[2]
 
@@ -33,7 +33,7 @@ async function main() {
 
   // Load the seed function
   const seedModule = await import(path.join(tenantDir, 'seed.ts'))
-  const { seed } = seedModule as { seed: (payload: Awaited<ReturnType<typeof getPayload>>, config: typeof config) => Promise<void> }
+  const { seed } = seedModule as { seed: (payload: Awaited<ReturnType<typeof getPayload>>, config: TenantConfig) => Promise<void> }
 
   if (typeof seed !== 'function') {
     console.error(`src/tenants/${slug}/seed.ts must export a named "seed" function.`)
@@ -41,7 +41,7 @@ async function main() {
   }
 
   // Initialise Payload (connects to DB)
-  const payloadConfig = await import('../src/payload.config.ts')
+  const payloadConfig = await import('../src/payload.config')
   const payload = await getPayload({ config: payloadConfig.default })
 
   await seed(payload, config)

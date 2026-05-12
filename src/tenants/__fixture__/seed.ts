@@ -31,7 +31,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
         active: true,
       },
     })
-    tenantId = updated.id
+    tenantId = String(updated.id)
   } else {
     const created = await payload.create({
       collection: 'tenants',
@@ -42,7 +42,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
         active: true,
       },
     })
-    tenantId = created.id
+    tenantId = String(created.id)
   }
 
   // Upsert home page (English)

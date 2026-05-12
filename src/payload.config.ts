@@ -88,7 +88,7 @@ export default buildConfig({
         pages: {},
         media: {},
       },
-      tenantsCollectionSlug: 'tenants',
+
       userHasAccessToAllTenants: (user) => {
         return (user as { roles?: string[] })?.roles?.includes('super-admin') ?? false
       },

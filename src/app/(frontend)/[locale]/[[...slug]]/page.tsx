@@ -41,7 +41,8 @@ async function getTenantIdBySlug(slug: string): Promise<string | null> {
     where: { slug: { equals: slug } },
     limit: 1,
   })
-  return result.docs[0]?.id ?? null
+  const id = result.docs[0]?.id
+  return id != null ? String(id) : null
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {

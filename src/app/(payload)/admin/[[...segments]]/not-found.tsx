@@ -1,1 +1,1 @@
-export { NotFoundPage as default, generateMetadata } from '@payloadcms/next/views'
+export { NotFoundPage as default } from '@payloadcms/next/views'
