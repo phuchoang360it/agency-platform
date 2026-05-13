@@ -34,6 +34,9 @@
     "zod": "^3.23.0"
   },
   "pnpm": {
+    "patchedDependencies": {
+      "@next/env@15.5.18": "patches/@next__env@15.5.18.patch"
+    },
     "onlyBuiltDependencies": [
       "esbuild",
       "sharp",

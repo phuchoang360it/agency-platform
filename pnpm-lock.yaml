@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@next/env@15.5.18': 4673dded6a1d1c8f26eac330e8f05b789256b76c43044d45bf54c349b1f6f2b0
+
 importers:
 
   .:
@@ -6361,7 +6364,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.2
     optional: true
 
-  '@next/env@15.5.18': {}
+  '@next/env@15.5.18(patch_hash=4673dded6a1d1c8f26eac330e8f05b789256b76c43044d45bf54c349b1f6f2b0)': {}
 
   '@next/env@16.2.6': {}
 
@@ -9300,7 +9303,7 @@ snapshots:
 
   payload@3.84.1(graphql@16.14.0)(typescript@5.9.3):
     dependencies:
-      '@next/env': 15.5.18
+      '@next/env': 15.5.18(patch_hash=4673dded6a1d1c8f26eac330e8f05b789256b76c43044d45bf54c349b1f6f2b0)
       '@payloadcms/translations': 3.84.1
       '@types/busboy': 1.5.4
       ajv: 8.18.0

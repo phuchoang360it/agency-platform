@@ -39,3 +39,4 @@ test-results/
 .vscode/
 *.swp
 *.swo
+settings.local.json

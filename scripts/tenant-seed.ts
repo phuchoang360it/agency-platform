@@ -24,6 +24,7 @@ if (existsSync(envFile)) {
 }
 
 import path from 'path'
+import { pathToFileURL } from 'url'
 import { getPayload } from 'payload'
 import { TenantConfigSchema, type TenantConfig } from '../src/lib/tenant/types'
 
@@ -38,12 +39,12 @@ async function main() {
   const tenantDir = path.resolve(process.cwd(), 'src', 'tenants', slug)
 
   // Load and validate the tenant config
-  const configModule = await import(path.join(tenantDir, 'tenant.config.ts'))
+  const configModule = await import(pathToFileURL(path.join(tenantDir, 'tenant.config.ts')).href)
   const rawConfig = configModule.default
   const config = TenantConfigSchema.parse(rawConfig)
 
   // Load the seed function
-  const seedModule = await import(path.join(tenantDir, 'seed.ts'))
+  const seedModule = await import(pathToFileURL(path.join(tenantDir, 'seed.ts')).href)
   const { seed } = seedModule as { seed: (payload: Awaited<ReturnType<typeof getPayload>>, config: TenantConfig) => Promise<void> }
 
   if (typeof seed !== 'function') {
