@@ -1,182 +1,185 @@
 # Adding a Tenant
 
-## Prerequisites
-
-- Docker services running: `docker compose up -d`
-- Dev server running or accessible: `pnpm dev`
+Step-by-step for onboarding a new client website.
 
 ---
 
-## Step 1 — Create the tenant directory
+## 1. Create the tenant config
 
 ```
-src/tenants/<slug>/
-├── tenant.config.ts    ← config (theme, locales, pages)
-└── seed.ts             ← placeholder content
+src/tenants/<slug>/tenant.config.ts
 ```
-
-Replace `<slug>` with a lowercase alphanumeric identifier, e.g. `acme`.
-
-## Step 2 — Write `tenant.config.ts`
-
-Copy the fixture as a starting point:
-
-```bash
-cp -r src/tenants/__fixture__ src/tenants/acme
-```
-
-Edit `src/tenants/acme/tenant.config.ts`:
 
 ```ts
 import type { TenantConfig } from '@/lib/tenant/types'
 
 const config: TenantConfig = {
-  slug: 'acme',
-  name: 'Acme GmbH',
-  domains: ['acme.com', 'www.acme.com'],
+  slug: 'newclient',
+  name: 'New Client GmbH',
+  domains: ['newclient.com', 'www.newclient.com'],
   locales: {
-    enabled: ['de', 'en'],
-    default: 'de',
+    enabled: ['en', 'de'],
+    default: 'en',
     omitDefaultPrefix: false,
   },
   theme: {
-    primaryColor: '#c00000',
+    primaryColor: '#...',
+    accentColor: '#...',
+    fontFamily: 'Inter, sans-serif',
+    borderRadius: '0.375rem',
   },
-  enabledPages: ['home', 'about', 'contact'],
-  layouts: {
-    home: 'home-layout-1',
-  },
+  enabledPages: ['landing', 'portfolio', 'contact'],
+  navigation: [
+    { label: { en: 'Home', de: 'Start' }, slug: '', pageTemplate: 'landing' },
+    { label: { en: 'Work', de: 'Projekte' }, slug: 'portfolio', pageTemplate: 'portfolio' },
+    { label: { en: 'Contact', de: 'Kontakt' }, slug: 'contact', pageTemplate: 'contact' },
+  ],
 }
 
 export default config
 ```
 
-See `docs/TENANT_CONFIG_SCHEMA.md` for all fields.
+`enabledPages` lists the `pageTemplate` values valid for this tenant. Any page whose template is not in this list returns 404.
 
-## Step 3 — Write `seed.ts`
+---
 
-```ts
-import type { Payload } from 'payload'
-import type { TenantConfig } from '@/lib/tenant/types'
+## 2. Register in the tenant registry
 
-export async function seed(payload: Payload, config: TenantConfig) {
-  // 1. Upsert tenant document
-  // 2. Create placeholder pages
-  // See src/tenants/__fixture__/seed.ts for a complete example
-}
-```
-
-## Step 4 — Register in the registry
-
-Edit `src/tenants/registry.ts` and add an import:
+`src/tenants/registry.ts`:
 
 ```ts
-import acmeConfig from './acme/tenant.config'
+import newclientConfig from './newclient/tenant.config'
 
-export const ALL_TENANT_CONFIGS: TenantConfig[] = [
+const rawConfigs: TenantConfig[] = [
   fixtureConfig,
-  acmeConfig,   // ← add this line
+  acmeConfig,
+  newclientConfig,   // ← add here
 ]
 ```
 
-## Step 5 — Run the seed script
-
-```bash
-pnpm tenant:seed acme
-```
-
-This creates the tenant document and placeholder pages in the DB.
-
-## Step 6 — Preview in dev
-
-```
-http://localhost:3000/tenant/acme.com/de
-http://localhost:3000/tenant/acme.com/en/about
-```
-
-## Step 7 — Edit content
-
-1. Open `http://localhost:3000/admin`
-2. Log in as super-admin
-3. Navigate to Pages → filter by tenant "Acme"
-4. Edit the placeholder content
-
-## Step 8 — Point DNS (production)
-
-1. Add an A record for `acme.com` pointing to the server IP.
-2. Coolify provisions SSL automatically via Let's Encrypt.
-3. Verify: `https://acme.com` → renders the German home page.
+The registry validates the config at startup. A schema error throws immediately.
 
 ---
 
-## Checklist
+## 3. Build the component tree
 
-- [ ] `src/tenants/acme/tenant.config.ts` created
-- [ ] `src/tenants/acme/seed.ts` created
-- [ ] `src/tenants/registry.ts` updated
-- [ ] `pnpm tenant:seed acme` ran successfully
-- [ ] Dev preview works at `/tenant/acme.com/<locale>`
-- [ ] Admin shows tenant in dropdown
-- [ ] (Prod) DNS configured and SSL active
+All tenant UI lives under `src/tenants/<slug>/components/`. No sharing with other tenants.
 
----
+```
+src/tenants/newclient/
+  tenant.config.ts
+  seed.ts
+  components/
+    Nav.tsx
+    Footer.tsx
+    pages/
+      LandingPage.tsx
+      PortfolioPage.tsx
+      ContactPage.tsx
+    renderer.tsx
+```
 
-## Example: Acme (Phase 2 reference implementation)
+### `renderer.tsx`
 
-`src/tenants/acme/` is the canonical Phase 2 example. Use it as a template for new tenants.
+The renderer owns the full page layout: it renders Nav, dispatches to the correct page component, and renders Footer. Individual page components only render their own content sections.
 
-### Design choices and why
+```tsx
+import type React from 'react'
+import type { TenantConfig } from '@/lib/tenant/types'
+import type { Page } from '@/payload-types'
+import { Nav } from './Nav'
+import { Footer } from './Footer'
+import { LandingPage } from './pages/LandingPage'
+import { PortfolioPage } from './pages/PortfolioPage'
+import { ContactPage } from './pages/ContactPage'
 
-**Locales: `['en', 'de']`, NOT `'vi'`**
-Proves the per-tenant locale gate: `GET /tenant/acme.com/vi/anything` returns 404. The platform stores content for all three locales in Payload; the frontend enforces the enabled subset.
+type PageProps = { page: Page; config: TenantConfig; locale: string }
 
-**Enabled pages: `['home', 'about', 'services', 'contact']`, NOT `'blog'`**
-Proves the page-type gate added in Phase 2: even if a `blog` page document existed in the DB for this tenant, the page component would call `notFound()` because `'blog' ∉ config.enabledPages`.
+const TEMPLATES: Record<string, React.ComponentType<PageProps>> = {
+  landing:   LandingPage,
+  portfolio: PortfolioPage,
+  contact:   ContactPage,
+}
 
-**Theme: blue-800 primary, amber-400 accent**
-CSS vars injected by `TenantPageRenderer → buildThemeCssVars`. Tailwind utilities `bg-primary`, `text-accent`, `rounded-tenant` consume these vars. Each tenant has its own design — no shared layout components.
-
-**Blocks used (all existing, no new blocks needed)**
-- Home: Hero → FeatureGrid(3-col) → CTA
-- About: Hero → RichText
-- Services: Hero → FeatureGrid(2-col) → CTA
-- Contact: RichText (address/phone/email) → CTA (mailto: link)
-
-**Seed is idempotent**
-Re-running `pnpm tenant:seed acme` updates existing records rather than duplicating them. The upsert pattern queries by `slug` + `tenant.value` before deciding create vs update.
-
-**Media seeding**
-Three Picsum images are fetched and uploaded to MinIO. If MinIO is not running, the seed logs a warning and continues — pages seed successfully without images.
-
-### Acme tenant config (summary)
-
-```ts
-{
-  slug: 'acme',
-  name: 'Acme GmbH',
-  domains: ['acme.com', 'www.acme.com'],
-  locales: { enabled: ['en', 'de'], default: 'en', omitDefaultPrefix: false },
-  theme: { primaryColor: '#1e40af', secondaryColor: '#1e3a8a', accentColor: '#f59e0b',
-           fontFamily: 'Inter, sans-serif', borderRadius: '0.5rem' },
-  enabledPages: ['home', 'about', 'services', 'contact'],
-  navigation: [...],  // 4 items, en + de labels
+export function renderNewclientPage(page: Page, config: TenantConfig, locale: string) {
+  const Component = TEMPLATES[page.pageTemplate ?? ''] ?? LandingPage
+  const currentSlug = page.slug === 'home' ? '' : page.slug
+  return (
+    <>
+      <Nav config={config} locale={locale} currentSlug={currentSlug} />
+      <main className="flex-1">
+        <Component page={page} config={config} locale={locale} />
+      </main>
+      <Footer config={config} locale={locale} />
+    </>
+  )
 }
 ```
 
-### Running the full verification
+### Page component pattern
+
+Page components render only their own content sections. They receive `page`, `config`, and `locale` as props. All text and image data comes from the `page` prop (Payload CMS). The component controls all layout and styling.
+
+```tsx
+import type { TenantConfig } from '@/lib/tenant/types'
+import type { Page } from '@/payload-types'
+
+type Props = { page: Page; config: TenantConfig; locale: string }
+
+export function LandingPage({ page, locale }: Props) {
+  const hero = page.heroSection
+  return (
+    <>
+      <section>
+        <h1>{hero?.heading}</h1>
+        <p>{hero?.subheading}</p>
+      </section>
+    </>
+  )
+}
+```
+
+---
+
+## 4. Wire up TenantPageRenderer
+
+`src/components/layouts/TenantPageRenderer.tsx` — add a case for the new tenant slug:
+
+```tsx
+import { renderNewclientPage } from '@/tenants/newclient/components/renderer'
+
+function renderPage(page: Page, config: TenantConfig, locale: string) {
+  switch (config.slug) {
+    case 'acme':       return renderAcmePage(page, config, locale)
+    case 'newclient':  return renderNewclientPage(page, config, locale)
+    default:           return null
+  }
+}
+```
+
+---
+
+## 5. Seed the database
+
+```
+src/tenants/<slug>/seed.ts
+```
+
+The seed script creates the tenant DB row and upserts all pages with their content. Run:
 
 ```bash
-docker compose up -d          # Postgres + MinIO
-pnpm tenant:seed acme         # Seed DB + media
-pnpm dev                      # Start Next.js + Payload
-
-# Spot checks
-open http://localhost:3000/tenant/acme.com/en          # blue theme, English
-open http://localhost:3000/tenant/acme.com/de          # German
-open http://localhost:3000/tenant/acme.com/vi          # must 404
-open http://localhost:3000/tenant/acme.com/en/blog     # must 404
-
-# Tests
-pnpm test           # Vitest unit tests (includes acmeTenantConfig.test.ts)
-pnpm test:e2e       # Playwright (requires running dev server + seeded DB)
+pnpm tenant:seed newclient
 ```
+
+The seed is idempotent — safe to re-run. Existing docs are updated, not duplicated.
+
+Use `pageTemplate: 'landing'` (string, not `as const`) in seed data.
+
+---
+
+## 6. Verify
+
+1. `pnpm typecheck` — no errors
+2. `pnpm lint` — no warnings
+3. Visit `http://localhost:3000/tenant/newclient.com/en/` — tenant renders
+4. Visit `/admin` — pages appear scoped to the new tenant

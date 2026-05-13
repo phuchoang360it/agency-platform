@@ -1,8 +1,4 @@
 import type { CollectionConfig } from 'payload'
-import { HeroBlock } from '@/blocks/Hero'
-import { FeatureGridBlock } from '@/blocks/FeatureGrid'
-import { CTABlock } from '@/blocks/CTA'
-import { RichTextBlock } from '@/blocks/RichText'
 import { buildRevalidationTags } from '@/lib/revalidation/tags'
 import { loadTenantConfig } from '@/lib/tenant/loadTenantConfig'
 import type { CollectionAfterChangeHook, CollectionAfterDeleteHook } from 'payload'
@@ -20,9 +16,8 @@ const afterChangePage: CollectionAfterChangeHook = async ({ doc }) => {
     const slug: string = doc?.slug ?? ''
 
     const tags = buildRevalidationTags(tenantSlug, locales, slug ? [slug] : undefined)
-    for (const tag of tags) {
-      revalidateTag(tag)
-    }
+    const bust = revalidateTag as (t: string) => void
+    for (const tag of tags) bust(tag)
   } catch {
     // next/cache unavailable outside Next.js runtime (e.g. seed scripts)
   }
@@ -38,9 +33,8 @@ const afterDeletePage: CollectionAfterDeleteHook = async ({ doc }) => {
     const tenantConfig = loadTenantConfig(tenantSlug)
     const locales = tenantConfig?.locales.enabled ?? ['en']
     const tags = buildRevalidationTags(tenantSlug, locales)
-    for (const tag of tags) {
-      revalidateTag(tag)
-    }
+    const bust = revalidateTag as (t: string) => void
+    for (const tag of tags) bust(tag)
   } catch {
     // next/cache unavailable outside Next.js runtime
   }
@@ -51,7 +45,7 @@ export const Pages: CollectionConfig = {
   slug: 'pages',
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'slug', 'pageType', 'updatedAt'],
+    defaultColumns: ['title', 'slug', 'pageTemplate', 'updatedAt'],
     description: 'Content pages scoped to a tenant. One page per locale variant is stored.',
   },
   versions: {
@@ -73,24 +67,88 @@ export const Pages: CollectionConfig = {
       admin: { description: 'URL slug, e.g. "about" → /en/about. Use "home" for the root page.' },
     },
     {
-      name: 'pageType',
-      type: 'select',
-      options: [
-        { label: 'Home', value: 'home' },
-        { label: 'About', value: 'about' },
-        { label: 'Services', value: 'services' },
-        { label: 'Contact', value: 'contact' },
-        { label: 'Blog List', value: 'blog' },
-        { label: 'Generic Page', value: 'page' },
-      ],
+      name: 'pageTemplate',
+      type: 'text',
+      admin: {
+        description: 'Template key mapping to a component in the tenant renderer (e.g. "home", "about", "portfolio-item").',
+      },
       defaultValue: 'page',
     },
     {
-      name: 'layout',
-      type: 'blocks',
+      name: 'heroSection',
+      type: 'group',
+      admin: {
+        description: 'Hero / page header section',
+        condition: (data, _) => ['home', 'about', 'services'].includes(data.pageTemplate as string),
+      },
+      fields: [
+        { name: 'heading', type: 'text', required: true, localized: true },
+        { name: 'subheading', type: 'text', localized: true },
+        { name: 'ctaLabel', type: 'text', localized: true, label: 'CTA Label' },
+        { name: 'ctaHref', type: 'text', label: 'CTA Link' },
+        { name: 'backgroundImage', type: 'upload', relationTo: 'media' },
+      ],
+    },
+    {
+      name: 'featuresSection',
+      type: 'group',
+      admin: {
+        description: 'Features / services grid section',
+        condition: (data, _) => ['home', 'services'].includes(data.pageTemplate as string),
+      },
+      fields: [
+        { name: 'heading', type: 'text', localized: true },
+        {
+          name: 'features',
+          type: 'array',
+          minRows: 1,
+          maxRows: 12,
+          fields: [
+            { name: 'title', type: 'text', required: true, localized: true },
+            { name: 'description', type: 'textarea', localized: true },
+            { name: 'icon', type: 'text', admin: { description: 'Emoji or icon name' } },
+          ],
+        },
+      ],
+    },
+    {
+      name: 'bodyContent',
+      type: 'richText',
       localized: true,
-      blocks: [HeroBlock, FeatureGridBlock, CTABlock, RichTextBlock],
-      admin: { description: 'Page content built from blocks.' },
+      admin: {
+        description: 'Main body content',
+        condition: (data, _) => (data.pageTemplate as string) === 'about',
+      },
+    },
+    {
+      name: 'contactDetails',
+      type: 'group',
+      admin: {
+        description: 'Contact information',
+        condition: (data, _) => (data.pageTemplate as string) === 'contact',
+      },
+      fields: [
+        { name: 'address', type: 'text', localized: true },
+        { name: 'phone', type: 'text' },
+        { name: 'email', type: 'text' },
+        { name: 'hours', type: 'text', localized: true },
+      ],
+    },
+    {
+      name: 'ctaSection',
+      type: 'group',
+      admin: {
+        description: 'Call to action section',
+        condition: (data, _) => ['home', 'services', 'contact'].includes(data.pageTemplate as string),
+      },
+      fields: [
+        { name: 'heading', type: 'text', localized: true },
+        { name: 'body', type: 'textarea', localized: true },
+        { name: 'primaryLabel', type: 'text', localized: true },
+        { name: 'primaryHref', type: 'text' },
+        { name: 'secondaryLabel', type: 'text', localized: true },
+        { name: 'secondaryHref', type: 'text' },
+      ],
     },
     {
       name: 'meta',

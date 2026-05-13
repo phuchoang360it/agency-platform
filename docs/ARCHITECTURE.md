@@ -1,108 +1,185 @@
 # Architecture
 
-## Request flow (production)
+## Overview
 
-```mermaid
-sequenceDiagram
-    participant Client
-    participant Edge as Middleware (Edge)
-    participant RSC as Next.js RSC (Node)
-    participant Payload
-    participant DB as Postgres
-    participant Cache as Next.js Cache
+Multi-tenant Next.js 16 + Payload CMS 3 platform. One codebase, many client websites. Each tenant is a fully isolated website with its own domain, design, component tree, and page structure. Tenant content (text + images) is edited in Payload CMS. Everything else — layout, HTML structure, visual design — is determined by code.
 
-    Client->>Edge: GET acme.com/en/about
-    Edge->>Edge: Read Host header → set x-tenant-domain: acme.com
-    Edge->>RSC: Pass through (NextResponse.next())
-    RSC->>RSC: headers().get('x-tenant-domain') → 'acme.com'
-    RSC->>RSC: resolveTenant('acme.com') → TenantConfig
-    RSC->>Cache: Check revalidation tag: tenant:acme:en:/about
-    alt Cache hit
-        Cache->>Client: Cached HTML
-    else Cache miss
-        RSC->>Payload: find({ collection:'pages', slug:'about', tenant:... })
-        Payload->>DB: SELECT * FROM pages WHERE ...
-        DB->>Payload: Page row
-        Payload->>RSC: Page doc
-        RSC->>RSC: Render TenantPageRenderer with blocks
-        RSC->>Cache: Store with tag tenant:acme:en:/about
-        RSC->>Client: HTML
-    end
-```
+---
 
-## Request flow (dev preview)
+## Request flow
 
 ```
-GET localhost:3000/tenant/__fixture__.test/en/about
-    ↓ Middleware (Edge)
-      - Detects /tenant/ prefix
-      - Extracts domain: __fixture__.test
-      - Rewrites URL to: /en/about
-      - Sets header: x-tenant-domain: __fixture__.test
-    ↓ RSC page.tsx (same as production from here)
-      - resolveTenant('__fixture__.test') → fixture TenantConfig
-      - Queries Payload for the page
-      - Renders
+Browser → CDN/proxy (prod) or localhost (dev)
+  ↓
+middleware.ts  [Edge runtime]
+  - passthrough: /admin, /api/, /_next/
+  - dev: parse /tenant/<domain>/... prefix, strip it, set x-tenant-domain header
+  - prod: forward Host header as x-tenant-domain
+  ↓
+app/(frontend)/[locale]/[[...slug]]/page.tsx  [Node.js runtime]
+  1. resolveTenant(x-tenant-domain header)  →  TenantConfig | null
+  2. isLocaleEnabled(config, locale)        →  404 if disabled
+  3. getTenantIdBySlug(config.slug)         →  DB tenant row ID
+  4. getPage(tenantId, slugStr, locale)     →  Page doc (ISR-cached)
+  5. config.enabledPages gate               →  404 if pageTemplate not in list
+  6. TenantPageRenderer(config, page, locale) →  tenant HTML
 ```
 
-## Tenant resolution
+---
+
+## Tenant registry
+
+`src/tenants/registry.ts` is the single source of truth for all tenants. It:
+- Imports each `tenant.config.ts`
+- Validates every config against `TenantConfigSchema` (Zod) at module load
+- Exports `ALL_TENANT_CONFIGS` used by middleware and page routes
+
+This file is imported at Edge runtime — it must not import Node.js-only modules.
+
+### Adding a tenant
+
+See `docs/ADDING_A_TENANT.md`.
+
+---
+
+## Tenant config (`TenantConfig`)
+
+Defined in `src/lib/tenant/types.ts`. Key fields:
+
+| Field | Purpose |
+|---|---|
+| `slug` | Unique identifier, used in DB queries, file paths, URLs |
+| `domains` | All domains (no protocol) that resolve to this tenant |
+| `locales.enabled` | Subset of `['de', 'en', 'vi']` active for this tenant |
+| `locales.default` | Default locale; optionally served without prefix |
+| `theme` | CSS variable values injected at render time |
+| `navigation` | Ordered nav items — label (localized), slug, pageTemplate |
+| `enabledPages` | Page templates active for this tenant; others → 404 |
+
+---
+
+## Component isolation model
+
+**No components are shared between tenants.**
+
+All tenant UI lives inside `src/tenants/<slug>/components/`:
 
 ```
-Host header (or /tenant/<domain> path)
-    ↓
-src/tenants/registry.ts
-  - Static import of all TenantConfig files
-  - Builds Map<domain, TenantConfig> at module load
-    ↓
-resolveTenant(host: string): TenantConfig | null
-  - Normalises: lowercase, strip www., strip port
-  - Lookup in Map
-    ↓
-TenantConfig | null
-  - null → notFound() or NoTenantsPage
-  - TenantConfig → render with tenant context
+src/tenants/<slug>/
+  tenant.config.ts
+  seed.ts
+  components/
+    Nav.tsx
+    Footer.tsx
+    pages/
+      <PageTemplate>.tsx   # one file per page template
+    renderer.tsx           # owns full page layout: Nav + main + Footer + template dispatch
+    (any other UI pieces)
 ```
 
-## Content flow (CMS → DB → SSG → revalidation)
+`TenantPageRenderer` (`src/components/layouts/TenantPageRenderer.tsx`) injects CSS theme vars and dispatches to the correct renderer by `config.slug`. It must never cross tenant boundaries.
+
+### Renderer responsibility
+
+`renderer.tsx` is the entry point for a tenant's entire page. It:
+1. Resolves `page.pageTemplate` → page component
+2. Renders Nav, the resolved component inside `<main>`, and Footer
+
+Individual page components (`pages/HomePage.tsx` etc.) render only their own sections — they do not include Nav or Footer.
+
+### Why strict isolation
+
+- Clients get completely custom HTML structure and design — no shared base classes
+- Changing one tenant's components carries zero risk to others
+- Each tenant's code can evolve independently
+
+---
+
+## Flexible page tree
+
+Page structure is per-tenant, defined entirely in `tenant.config.ts`. The platform imposes no fixed page hierarchy.
+
+`navigation` defines what URLs exist and what they're called. `enabledPages` lists the `pageTemplate` values that are allowed — any page with a template outside this list returns 404.
+
+`pageTemplate` on each Page document is a free-text string. `renderer.tsx` maps it to the correct component:
+
+```tsx
+const TEMPLATES: Record<string, React.ComponentType<PageProps>> = {
+  landing:          LandingPage,
+  'portfolio-item': PortfolioItemPage,
+  team:             TeamPage,
+  faq:              FaqPage,
+}
+
+export function renderNewclientPage(page: Page, config: TenantConfig, locale: string) {
+  const Component = TEMPLATES[page.pageTemplate ?? ''] ?? GenericPage
+  const currentSlug = page.slug === 'home' ? '' : page.slug
+  return (
+    <>
+      <Nav config={config} locale={locale} currentSlug={currentSlug} />
+      <main className="flex-1">
+        <Component page={page} config={config} locale={locale} />
+      </main>
+      <Footer config={config} locale={locale} />
+    </>
+  )
+}
+```
+
+There is no platform-wide enum of page types. Template keys are strings the tenant developer chooses freely.
+
+---
+
+## Content model
+
+Payload `pages` collection stores structured content groups. Editors only see and edit text fields and image uploads. Layout, styling, and component choice are never stored in the CMS.
+
+Content groups (conditional fields, visible only when relevant):
+
+| Group | Available on templates |
+|---|---|
+| `heroSection` | heading, subheading, ctaLabel, ctaHref, backgroundImage |
+| `featuresSection` | heading, feature list (title, description, icon) |
+| `bodyContent` | richText |
+| `contactDetails` | address, phone, email, hours |
+| `ctaSection` | heading, body, primary/secondary button |
+| `meta` | SEO title, description, ogImage |
+
+When a page template needs data that doesn't fit existing groups, add a new group to `Pages.ts` — do not store layout or component config in CMS.
+
+---
+
+## ISR caching + revalidation
+
+- Pages cached via `unstable_cache` with tags `tenant:<slug>`, `tenant:<slug>:<locale>:<page-slug>`
+- Payload `afterChange` + `afterDelete` hooks call `revalidateTag` on save
+- Tag helpers: `src/lib/revalidation/tags.ts`
+- Manual revalidation: `POST /api/revalidate` with `{ tag: "..." }` and `REVALIDATE_SECRET` header
+
+---
+
+## Dev preview
+
+In development, tenant domains aren't bound to DNS. Access any tenant via:
 
 ```
-Admin edits page in Payload
-    ↓
-Payload saves to PostgreSQL
-    ↓
-Collection afterChange hook fires
-    ↓
-buildRevalidationTags(tenantSlug, locales, [slug])
-    ↓
-revalidateTag('tenant:acme:en:/about')
-    ↓
-Next.js invalidates cached RSC response
-    ↓
-Next request for /en/about → cache miss → re-render from DB
-    ↓
-New HTML cached with same tags
+http://localhost:3000/tenant/<domain>/<locale>/[slug]
 ```
 
-## Multi-tenant data model
+Example: `http://localhost:3000/tenant/acme.com/en/about`
 
-```
-tenants            users               pages
----------          -----               -----
-id                 id                  id
-name               email               title (localized)
-slug               roles[]             slug
-domains[]          (tenant scoping     layout[] (blocks, localized)
-active             via plugin)         meta (localized)
-                                       tenant → tenants
-                                       _status (draft|published)
-```
+The `/tenant/...` prefix is stripped by middleware before reaching page routes. It is blocked in production.
 
-## Revalidation tags hierarchy
+---
 
-```
-tenant:acme                      ← flush all acme pages
-  tenant:acme:en                 ← flush all English pages
-    tenant:acme:en:/about        ← flush one page
-  tenant:acme:de
-    tenant:acme:de:/about
+## Payload CMS admin
+
+`/admin` — standard Payload admin panel. Available in dev and prod.
+
+After changing collection schemas run:
+```bash
+pnpm generate:types      # updates src/payload-types.ts
+pnpm generate:importmap  # updates src/app/(payload)/admin/importMap.js
+pnpm migrate:create      # scaffolds the SQL migration
+pnpm migrate             # applies it
 ```

@@ -6,9 +6,6 @@ export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
 export const SupportedLocaleSchema = z.enum(['de', 'en', 'vi'])
 
-export const PageTypeSchema = z.enum(['home', 'about', 'services', 'contact', 'blog', 'page'])
-export type PageType = z.infer<typeof PageTypeSchema>
-
 export const ThemeTokensSchema = z.object({
   primaryColor: z.string().optional(),
   secondaryColor: z.string().optional(),
@@ -21,7 +18,7 @@ export type ThemeTokens = z.infer<typeof ThemeTokensSchema>
 export const NavItemSchema = z.object({
   label: z.record(z.string(), z.string()),
   slug: z.string(),
-  pageType: PageTypeSchema.optional(),
+  pageTemplate: z.string().optional(),
 })
 export type NavItem = z.infer<typeof NavItemSchema>
 
@@ -43,9 +40,9 @@ export const TenantConfigSchema = z.object({
     omitDefaultPrefix: z.boolean().default(false),
   }),
   theme: ThemeTokensSchema.optional(),
-  // Which page types are active for this tenant.
-  enabledPages: z.array(PageTypeSchema).min(1),
-  // Maps page type → layout variant identifier (e.g. 'home-layout-1').
+  // Which page templates are active for this tenant. Others return 404.
+  enabledPages: z.array(z.string()).min(1),
+  // Maps page template → layout variant identifier (e.g. 'home-layout-1').
   layouts: z.record(z.string(), z.string()).optional(),
   navigation: z.array(NavItemSchema).optional(),
 })

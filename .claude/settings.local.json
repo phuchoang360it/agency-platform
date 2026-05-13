@@ -12,7 +12,16 @@
       "Bash(python3 -c ' *)",
       "Bash(find node_modules/.pnpm/@payloadcms+plugin-multi-tenant@3.84.1_@payloadcms+ui@3.84.1_@types+react@19.2.14_monac_969cb187b330d615f6e7b1e32869d5ec/node_modules/@payloadcms/plugin-multi-tenant/dist -name TenantField*)",
       "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); exp=p.get\\('exports',{}\\); [print\\(k,v\\) for k,v in exp.items\\(\\) if 'utilities' in str\\(k\\) or 'layouts' in str\\(k\\) or 'server' in str\\(k\\).lower\\(\\)]\")",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "mcp__vexp__expand_vexp_ref",
+      "Bash(Get-ChildItem -Path \"D:\\\\360it-web\\\\agency-platform\\\\node_modules\\\\.pnpm\" -Filter \"@next+env*\" -Directory)",
+      "Bash(Select-Object -First 5)",
+      "Bash(node -e \"import\\('@next/env'\\).then\\(m => console.log\\(Object.keys\\(m\\)\\)\\)\")",
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(node *)",
+      "Bash(xargs -I {} cat {})",
+      "Bash(xargs grep -n \"loadedEnvFiles\")",
+      "Bash(pnpm typecheck *)"
     ]
   }
 }

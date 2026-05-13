@@ -1,31 +1,6 @@
 import type { Payload } from 'payload'
 import type { TenantConfig } from '@/lib/tenant/types'
 
-// Lexical paragraph node helper — avoids repeating the JSON skeleton.
-function para(text: string) {
-  return {
-    type: 'paragraph' as const,
-    children: [{ type: 'text' as const, text, version: 1 }],
-    direction: 'ltr' as const,
-    format: '' as const,
-    indent: 0,
-    version: 1,
-  }
-}
-
-function richTextRoot(...paragraphs: ReturnType<typeof para>[]) {
-  return {
-    root: {
-      type: 'root',
-      children: paragraphs,
-      direction: 'ltr' as const,
-      format: '' as const,
-      indent: 0,
-      version: 1,
-    },
-  }
-}
-
 // ── Upsert helpers ────────────────────────────────────────────────────────────
 
 async function upsertTenant(payload: Payload, config: TenantConfig): Promise<string> {
@@ -115,7 +90,6 @@ async function seedMedia(
       })
       ids.push(String(created.id))
     } catch (err) {
-      // MinIO not running or network error — skip media, do not fail seed.
       payload.logger.warn(`Media seed skipped for "${item.filename}": ${String(err)}`)
     }
   }
@@ -130,14 +104,13 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const tenantId = await upsertTenant(payload, config)
   payload.logger.info(`Tenant upserted (id: ${tenantId})`)
 
-  // 2. Media (3 Picsum placeholders — skipped if MinIO unavailable)
-  await seedMedia(payload, tenantId, [
-    { url: 'https://picsum.photos/seed/acme-hero/1200/600', alt: 'Acme hero image', filename: 'acme-hero.jpg' },
-    { url: 'https://picsum.photos/seed/acme-about/1200/600', alt: 'Acme team photo', filename: 'acme-about.jpg' },
-    { url: 'https://picsum.photos/seed/acme-office/1200/600', alt: 'Acme office', filename: 'acme-office.jpg' },
+  // 2. Media (Picsum placeholders — skipped if MinIO unavailable)
+  const mediaIds = await seedMedia(payload, tenantId, [
+    { url: 'https://picsum.photos/seed/acme-hero/1600/900', alt: 'Acme hero image', filename: 'acme-hero.jpg' },
+    { url: 'https://picsum.photos/seed/acme-about/1200/800', alt: 'Acme team photo', filename: 'acme-about.jpg' },
+    { url: 'https://picsum.photos/seed/acme-office/1200/800', alt: 'Acme office', filename: 'acme-office.jpg' },
   ])
 
-  // multi-tenant plugin stores tenant as a plain relationship ID (not polymorphic)
   const tenant = Number(tenantId)
 
   // ── HOME ────────────────────────────────────────────────────────────────────
@@ -145,37 +118,30 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const homeEn = {
     title: 'Home — Acme GmbH',
     slug: 'home',
-    pageType: 'home' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'Proven Solutions for Modern Business',
-        subheading: 'Acme GmbH delivers consulting, implementation, and support that drives measurable results for your organisation.',
-        ctaLabel: 'Explore Our Services',
-        ctaHref: '/en/services',
-        variant: 'centered' as const,
-      },
-      {
-        blockType: 'featureGrid' as const,
-        heading: 'Why Acme?',
-        columns: '3' as const,
-        features: [
-          { title: 'Expert Consulting', description: 'Strategic advisory from seasoned professionals with decades of industry experience.' },
-          { title: 'Seamless Implementation', description: 'Hands-on project delivery with proven methodologies and transparent milestones.' },
-          { title: 'Reliable Support', description: 'Ongoing maintenance and 24/7 assistance to keep your operations running smoothly.' },
-        ],
-      },
-      {
-        blockType: 'cta' as const,
-        heading: 'Ready to Start Your Project?',
-        body: 'Get in touch today and let us show you what Acme GmbH can do for your business.',
-        primaryLabel: 'Contact Us',
-        primaryHref: '/en/contact',
-        secondaryLabel: 'Learn More',
-        secondaryHref: '/en/about',
-        variant: 'banner' as const,
-      },
-    ],
+    pageTemplate: 'home',
+    heroSection: {
+      heading: 'Proven Solutions for Modern Business',
+      subheading: 'Acme GmbH delivers consulting, implementation, and support that drives measurable results for your organisation.',
+      ctaLabel: 'Explore Our Services',
+      ctaHref: '/en/services',
+      backgroundImage: mediaIds[0] ?? null,
+    },
+    featuresSection: {
+      heading: 'Why Acme?',
+      features: [
+        { title: 'Expert Consulting', description: 'Strategic advisory from seasoned professionals with decades of industry experience.', icon: '🎯' },
+        { title: 'Seamless Implementation', description: 'Hands-on project delivery with proven methodologies and transparent milestones.', icon: '⚙️' },
+        { title: 'Reliable Support', description: 'Ongoing maintenance and 24/7 assistance to keep your operations running smoothly.', icon: '🛡️' },
+      ],
+    },
+    ctaSection: {
+      heading: 'Ready to Start Your Project?',
+      body: 'Get in touch today and let us show you what Acme GmbH can do for your business.',
+      primaryLabel: 'Contact Us',
+      primaryHref: '/en/contact',
+      secondaryLabel: 'Learn More',
+      secondaryHref: '/en/about',
+    },
     meta: {
       title: 'Acme GmbH — Proven Solutions for Modern Business',
       description: 'Acme GmbH provides expert consulting, seamless implementation, and reliable support for businesses across Europe.',
@@ -187,37 +153,30 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const homeDe = {
     title: 'Startseite — Acme GmbH',
     slug: 'home',
-    pageType: 'home' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'Bewährte Lösungen für modernes Business',
-        subheading: 'Acme GmbH liefert Beratung, Umsetzung und Support, der messbare Ergebnisse für Ihr Unternehmen erzielt.',
-        ctaLabel: 'Unsere Leistungen entdecken',
-        ctaHref: '/de/services',
-        variant: 'centered' as const,
-      },
-      {
-        blockType: 'featureGrid' as const,
-        heading: 'Warum Acme?',
-        columns: '3' as const,
-        features: [
-          { title: 'Fachkundige Beratung', description: 'Strategische Begleitung durch erfahrene Experten mit jahrzehntelangem Branchenwissen.' },
-          { title: 'Reibungslose Umsetzung', description: 'Praxisnahe Projektabwicklung mit bewährten Methoden und transparenten Meilensteinen.' },
-          { title: 'Zuverlässiger Support', description: 'Laufende Wartung und 24/7-Unterstützung, damit Ihr Betrieb stets reibungslos läuft.' },
-        ],
-      },
-      {
-        blockType: 'cta' as const,
-        heading: 'Bereit, Ihr Projekt zu starten?',
-        body: 'Kontaktieren Sie uns noch heute und erfahren Sie, was Acme GmbH für Ihr Unternehmen leisten kann.',
-        primaryLabel: 'Kontakt aufnehmen',
-        primaryHref: '/de/contact',
-        secondaryLabel: 'Mehr erfahren',
-        secondaryHref: '/de/about',
-        variant: 'banner' as const,
-      },
-    ],
+    pageTemplate: 'home',
+    heroSection: {
+      heading: 'Bewährte Lösungen für modernes Business',
+      subheading: 'Acme GmbH liefert Beratung, Umsetzung und Support, der messbare Ergebnisse für Ihr Unternehmen erzielt.',
+      ctaLabel: 'Unsere Leistungen entdecken',
+      ctaHref: '/de/services',
+      backgroundImage: mediaIds[0] ?? null,
+    },
+    featuresSection: {
+      heading: 'Warum Acme?',
+      features: [
+        { title: 'Fachkundige Beratung', description: 'Strategische Begleitung durch erfahrene Experten mit jahrzehntelangem Branchenwissen.', icon: '🎯' },
+        { title: 'Reibungslose Umsetzung', description: 'Praxisnahe Projektabwicklung mit bewährten Methoden und transparenten Meilensteinen.', icon: '⚙️' },
+        { title: 'Zuverlässiger Support', description: 'Laufende Wartung und 24/7-Unterstützung, damit Ihr Betrieb stets reibungslos läuft.', icon: '🛡️' },
+      ],
+    },
+    ctaSection: {
+      heading: 'Bereit, Ihr Projekt zu starten?',
+      body: 'Kontaktieren Sie uns noch heute und erfahren Sie, was Acme GmbH für Ihr Unternehmen leisten kann.',
+      primaryLabel: 'Kontakt aufnehmen',
+      primaryHref: '/de/contact',
+      secondaryLabel: 'Mehr erfahren',
+      secondaryHref: '/de/about',
+    },
     meta: {
       title: 'Acme GmbH — Bewährte Lösungen für modernes Business',
       description: 'Acme GmbH bietet fachkundige Beratung, reibungslose Umsetzung und zuverlässigen Support für Unternehmen in ganz Europa.',
@@ -235,24 +194,25 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const aboutEn = {
     title: 'About — Acme GmbH',
     slug: 'about',
-    pageType: 'about' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'About Acme GmbH',
-        subheading: 'A trusted partner for businesses across Europe since 2005.',
-        variant: 'minimal' as const,
+    pageTemplate: 'about',
+    heroSection: {
+      heading: 'About Acme GmbH',
+      subheading: 'A trusted partner for businesses across Europe since 2005.',
+    },
+    bodyContent: {
+      root: {
+        type: 'root',
+        children: [
+          { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'Acme GmbH was founded in 2005 with a single mission: to make enterprise-grade consulting and technology delivery accessible to organisations of every size.' }] },
+          { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'Over the past two decades we have partnered with more than 300 companies across 18 countries, helping them navigate complex challenges and emerge stronger, faster, and more resilient.' }] },
+          { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'Our team of 120 specialists brings together deep expertise in strategy, engineering, and operations — always working as an extension of your own team, never as a distant vendor.' }] },
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        version: 1,
       },
-      {
-        blockType: 'richText' as const,
-        content: richTextRoot(
-          para('Acme GmbH was founded in 2005 with a single mission: to make enterprise-grade consulting and technology delivery accessible to organisations of every size.'),
-          para('Over the past two decades we have partnered with more than 300 companies across 18 countries, helping them navigate complex challenges and emerge stronger, faster, and more resilient.'),
-          para('Our team of 120 specialists brings together deep expertise in strategy, engineering, and operations — always working as an extension of your own team, never as a distant vendor.'),
-        ),
-        maxWidth: 'prose' as const,
-      },
-    ],
+    },
     meta: {
       title: 'About Acme GmbH — Trusted Partner Since 2005',
       description: 'Learn about Acme GmbH, our history, our team, and our commitment to delivering measurable results for clients across Europe.',
@@ -264,24 +224,25 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const aboutDe = {
     title: 'Über uns — Acme GmbH',
     slug: 'about',
-    pageType: 'about' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'Über Acme GmbH',
-        subheading: 'Ein verlässlicher Partner für Unternehmen in ganz Europa seit 2005.',
-        variant: 'minimal' as const,
+    pageTemplate: 'about',
+    heroSection: {
+      heading: 'Über Acme GmbH',
+      subheading: 'Ein verlässlicher Partner für Unternehmen in ganz Europa seit 2005.',
+    },
+    bodyContent: {
+      root: {
+        type: 'root',
+        children: [
+          { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'Acme GmbH wurde 2005 mit einer klaren Mission gegründet: Enterprise-Beratung und technologische Umsetzung für Unternehmen jeder Größe zugänglich zu machen.' }] },
+          { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'In den vergangenen zwei Jahrzehnten haben wir mehr als 300 Unternehmen in 18 Ländern dabei begleitet, komplexe Herausforderungen zu meistern und gestärkt, schneller und widerstandsfähiger hervorzugehen.' }] },
+          { type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'Unser Team aus 120 Spezialisten vereint umfassendes Know-how in Strategie, Engineering und Betrieb — stets als Erweiterung Ihres eigenen Teams, nie als distanzierter Dienstleister.' }] },
+        ],
+        direction: 'ltr',
+        format: '',
+        indent: 0,
+        version: 1,
       },
-      {
-        blockType: 'richText' as const,
-        content: richTextRoot(
-          para('Acme GmbH wurde 2005 mit einer klaren Mission gegründet: Enterprise-Beratung und technologische Umsetzung für Unternehmen jeder Größe zugänglich zu machen.'),
-          para('In den vergangenen zwei Jahrzehnten haben wir mehr als 300 Unternehmen in 18 Ländern dabei begleitet, komplexe Herausforderungen zu meistern und gestärkt, schneller und widerstandsfähiger hervorzugehen.'),
-          para('Unser Team aus 120 Spezialisten vereint umfassendes Know-how in Strategie, Engineering und Betrieb — stets als Erweiterung Ihres eigenen Teams, nie als distanzierter Dienstleister.'),
-        ),
-        maxWidth: 'prose' as const,
-      },
-    ],
+    },
     meta: {
       title: 'Über Acme GmbH — Verlässlicher Partner seit 2005',
       description: 'Erfahren Sie mehr über Acme GmbH, unsere Geschichte, unser Team und unser Engagement für messbare Ergebnisse bei Kunden in ganz Europa.',
@@ -299,45 +260,25 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const servicesEn = {
     title: 'Services — Acme GmbH',
     slug: 'services',
-    pageType: 'services' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'Our Services',
-        subheading: 'From strategy through to execution — Acme GmbH covers every stage of your project.',
-        variant: 'minimal' as const,
-      },
-      {
-        blockType: 'featureGrid' as const,
-        heading: 'What We Offer',
-        columns: '2' as const,
-        features: [
-          {
-            title: 'Consulting',
-            description: 'Strategic workshops, process audits, and roadmap planning to align your technology investments with business objectives.',
-            icon: '🎯',
-          },
-          {
-            title: 'Implementation',
-            description: 'End-to-end project delivery: architecture design, agile sprints, quality assurance, and production rollout.',
-            icon: '⚙️',
-          },
-          {
-            title: 'Support',
-            description: 'Managed services, incident response, and continuous improvement programmes that keep your systems healthy and your teams productive.',
-            icon: '🛡️',
-          },
-        ],
-      },
-      {
-        blockType: 'cta' as const,
-        heading: 'Not Sure Where to Start?',
-        body: 'Book a free 30-minute discovery call and we will help you identify the right service for your situation.',
-        primaryLabel: 'Book a Discovery Call',
-        primaryHref: '/en/contact',
-        variant: 'card' as const,
-      },
-    ],
+    pageTemplate: 'services',
+    heroSection: {
+      heading: 'Our Services',
+      subheading: 'From strategy through to execution — Acme GmbH covers every stage of your project.',
+    },
+    featuresSection: {
+      heading: 'What We Offer',
+      features: [
+        { title: 'Consulting', description: 'Strategic workshops, process audits, and roadmap planning to align your technology investments with business objectives.', icon: '🎯' },
+        { title: 'Implementation', description: 'End-to-end project delivery: architecture design, agile sprints, quality assurance, and production rollout.', icon: '⚙️' },
+        { title: 'Support', description: 'Managed services, incident response, and continuous improvement programmes that keep your systems healthy and your teams productive.', icon: '🛡️' },
+      ],
+    },
+    ctaSection: {
+      heading: 'Not Sure Where to Start?',
+      body: 'Book a free 30-minute discovery call and we will help you identify the right service for your situation.',
+      primaryLabel: 'Book a Discovery Call',
+      primaryHref: '/en/contact',
+    },
     meta: {
       title: 'Services — Consulting, Implementation & Support | Acme GmbH',
       description: 'Explore Acme GmbH\'s core services: strategic consulting, hands-on implementation, and ongoing managed support.',
@@ -349,45 +290,25 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const servicesDe = {
     title: 'Leistungen — Acme GmbH',
     slug: 'services',
-    pageType: 'services' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'Unsere Leistungen',
-        subheading: 'Von der Strategie bis zur Umsetzung — Acme GmbH begleitet Sie durch jede Phase Ihres Projekts.',
-        variant: 'minimal' as const,
-      },
-      {
-        blockType: 'featureGrid' as const,
-        heading: 'Was wir bieten',
-        columns: '2' as const,
-        features: [
-          {
-            title: 'Beratung',
-            description: 'Strategische Workshops, Prozess-Audits und Roadmap-Planung, um Ihre Technologieinvestitionen mit Ihren Unternehmenszielen in Einklang zu bringen.',
-            icon: '🎯',
-          },
-          {
-            title: 'Umsetzung',
-            description: 'Ganzheitliche Projektabwicklung: Architekturdesign, agile Sprints, Qualitätssicherung und Produktivschaltung.',
-            icon: '⚙️',
-          },
-          {
-            title: 'Support',
-            description: 'Managed Services, Incident-Response und kontinuierliche Verbesserungsprogramme, die Ihre Systeme gesund und Ihre Teams produktiv halten.',
-            icon: '🛡️',
-          },
-        ],
-      },
-      {
-        blockType: 'cta' as const,
-        heading: 'Nicht sicher, wo Sie anfangen sollen?',
-        body: 'Buchen Sie ein kostenloses 30-minütiges Erstgespräch, und wir helfen Ihnen, die richtige Leistung für Ihre Situation zu finden.',
-        primaryLabel: 'Erstgespräch buchen',
-        primaryHref: '/de/contact',
-        variant: 'card' as const,
-      },
-    ],
+    pageTemplate: 'services',
+    heroSection: {
+      heading: 'Unsere Leistungen',
+      subheading: 'Von der Strategie bis zur Umsetzung — Acme GmbH begleitet Sie durch jede Phase Ihres Projekts.',
+    },
+    featuresSection: {
+      heading: 'Was wir bieten',
+      features: [
+        { title: 'Beratung', description: 'Strategische Workshops, Prozess-Audits und Roadmap-Planung, um Ihre Technologieinvestitionen mit Ihren Unternehmenszielen in Einklang zu bringen.', icon: '🎯' },
+        { title: 'Umsetzung', description: 'Ganzheitliche Projektabwicklung: Architekturdesign, agile Sprints, Qualitätssicherung und Produktivschaltung.', icon: '⚙️' },
+        { title: 'Support', description: 'Managed Services, Incident-Response und kontinuierliche Verbesserungsprogramme, die Ihre Systeme gesund und Ihre Teams produktiv halten.', icon: '🛡️' },
+      ],
+    },
+    ctaSection: {
+      heading: 'Nicht sicher, wo Sie anfangen sollen?',
+      body: 'Buchen Sie ein kostenloses 30-minütiges Erstgespräch, und wir helfen Ihnen, die richtige Leistung für Ihre Situation zu finden.',
+      primaryLabel: 'Erstgespräch buchen',
+      primaryHref: '/de/contact',
+    },
     meta: {
       title: 'Leistungen — Beratung, Umsetzung & Support | Acme GmbH',
       description: 'Entdecken Sie die Kernleistungen von Acme GmbH: strategische Beratung, praxisnahe Umsetzung und laufenden Managed Support.',
@@ -405,28 +326,19 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const contactEn = {
     title: 'Contact — Acme GmbH',
     slug: 'contact',
-    pageType: 'contact' as const,
-    layout: [
-      {
-        blockType: 'richText' as const,
-        content: richTextRoot(
-          para('Acme GmbH'),
-          para('Musterstraße 42, 10115 Berlin, Germany'),
-          para('Phone: +49 30 123456-0'),
-          para('E-mail: hello@acme.com'),
-          para('Office hours: Monday–Friday, 09:00–18:00 CET'),
-        ),
-        maxWidth: 'wide' as const,
-      },
-      {
-        blockType: 'cta' as const,
-        heading: 'Send Us a Message',
-        body: 'Fill in the form below and one of our team members will get back to you within one business day.',
-        primaryLabel: 'Email Us Directly',
-        primaryHref: 'mailto:hello@acme.com',
-        variant: 'card' as const,
-      },
-    ],
+    pageTemplate: 'contact',
+    contactDetails: {
+      address: 'Musterstraße 42, 10115 Berlin, Germany',
+      phone: '+49 30 123456-0',
+      email: 'hello@acme.com',
+      hours: 'Monday–Friday, 09:00–18:00 CET',
+    },
+    ctaSection: {
+      heading: 'Send Us a Message',
+      body: 'Fill in the form below and one of our team members will get back to you within one business day.',
+      primaryLabel: 'Email Us Directly',
+      primaryHref: 'mailto:hello@acme.com',
+    },
     meta: {
       title: 'Contact Acme GmbH — Berlin, Germany',
       description: 'Get in touch with Acme GmbH. Visit us in Berlin or send an email to hello@acme.com — we reply within one business day.',
@@ -438,28 +350,19 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const contactDe = {
     title: 'Kontakt — Acme GmbH',
     slug: 'contact',
-    pageType: 'contact' as const,
-    layout: [
-      {
-        blockType: 'richText' as const,
-        content: richTextRoot(
-          para('Acme GmbH'),
-          para('Musterstraße 42, 10115 Berlin, Deutschland'),
-          para('Telefon: +49 30 123456-0'),
-          para('E-Mail: hallo@acme.com'),
-          para('Bürozeiten: Montag–Freitag, 09:00–18:00 Uhr MEZ'),
-        ),
-        maxWidth: 'wide' as const,
-      },
-      {
-        blockType: 'cta' as const,
-        heading: 'Schreiben Sie uns',
-        body: 'Füllen Sie das Formular aus und einer unserer Mitarbeiter meldet sich innerhalb eines Werktages bei Ihnen.',
-        primaryLabel: 'Direkt per E-Mail',
-        primaryHref: 'mailto:hallo@acme.com',
-        variant: 'card' as const,
-      },
-    ],
+    pageTemplate: 'contact',
+    contactDetails: {
+      address: 'Musterstraße 42, 10115 Berlin, Deutschland',
+      phone: '+49 30 123456-0',
+      email: 'hallo@acme.com',
+      hours: 'Montag–Freitag, 09:00–18:00 Uhr MEZ',
+    },
+    ctaSection: {
+      heading: 'Schreiben Sie uns',
+      body: 'Füllen Sie das Formular aus und einer unserer Mitarbeiter meldet sich innerhalb eines Werktages bei Ihnen.',
+      primaryLabel: 'Direkt per E-Mail',
+      primaryHref: 'mailto:hallo@acme.com',
+    },
     meta: {
       title: 'Kontakt — Acme GmbH, Berlin',
       description: 'Nehmen Sie Kontakt mit Acme GmbH auf. Besuchen Sie uns in Berlin oder schreiben Sie an hallo@acme.com — wir antworten innerhalb eines Werktages.',

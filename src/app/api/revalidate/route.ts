@@ -48,9 +48,8 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const tags = buildRevalidationTags(tenantSlug, locales, slugs)
 
-  for (const tag of tags) {
-    revalidateTag(tag)
-  }
+  const bust = revalidateTag as (t: string) => void
+  for (const tag of tags) bust(tag)
 
   return NextResponse.json({ revalidated: true, tags })
 }

@@ -33,10 +33,10 @@ const config: TenantConfig = {
   enabledPages: ['home', 'about', 'services', 'contact'],
 
   navigation: [
-    { label: { en: 'Home', de: 'Start' }, slug: '', pageType: 'home' },
-    { label: { en: 'About', de: 'Über uns' }, slug: 'about', pageType: 'about' },
-    { label: { en: 'Services', de: 'Leistungen' }, slug: 'services', pageType: 'services' },
-    { label: { en: 'Contact', de: 'Kontakt' }, slug: 'contact', pageType: 'contact' },
+    { label: { en: 'Home', de: 'Start' }, slug: '', pageTemplate: 'home' },
+    { label: { en: 'About', de: 'Über uns' }, slug: 'about', pageTemplate: 'about' },
+    { label: { en: 'Services', de: 'Leistungen' }, slug: 'services', pageTemplate: 'services' },
+    { label: { en: 'Contact', de: 'Kontakt' }, slug: 'contact', pageTemplate: 'contact' },
   ],
 }
 

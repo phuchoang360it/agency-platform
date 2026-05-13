@@ -1,17 +1,7 @@
 import type { Payload } from 'payload'
 import type { TenantConfig } from '@/lib/tenant/types'
 
-/**
- * Seed function for the fixture tenant.
- * Called by scripts/tenant-seed.ts as: pnpm tenant:seed __fixture__
- *
- * Creates or updates:
- *   - The tenant DB document
- *   - A home page with Hero + FeatureGrid blocks
- *   - An about page with RichText block
- */
 export async function seed(payload: Payload, config: TenantConfig): Promise<void> {
-  // Upsert the tenant document
   const existingTenants = await payload.find({
     collection: 'tenants',
     where: { slug: { equals: config.slug } },
@@ -45,91 +35,61 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
     tenantId = String(created.id)
   }
 
-  // Upsert home page (English)
-  const existingHome = await payload.find({
-    collection: 'pages',
-    where: {
-      and: [
-        { slug: { equals: 'home' } },
-        { tenant: { equals: tenantId } },
-      ],
-    },
-    locale: 'en',
-    limit: 1,
-  })
+  const upsertPage = async (slugStr: string, locale: 'en' | 'de', data: Record<string, unknown>) => {
+    const existing = await payload.find({
+      collection: 'pages',
+      where: { and: [{ slug: { equals: slugStr } }, { tenant: { equals: tenantId } }] },
+      locale,
+      limit: 1,
+    })
+    if (existing.docs.length > 0) {
+      await payload.update({ collection: 'pages', id: existing.docs[0].id, data, locale })
+    } else {
+      await payload.create({ collection: 'pages', data, locale })
+    }
+  }
 
-  const homeData = {
+  const tenant = Number(tenantId)
+
+  await upsertPage('home', 'en', {
     title: 'Welcome — Fixture Tenant',
     slug: 'home',
-    pageType: 'home' as const,
-    layout: [
-      {
-        blockType: 'hero' as const,
-        heading: 'Platform Scaffold Working',
-        subheading: 'This is the Phase 1 fixture tenant. Replace with real content.',
-        ctaLabel: 'Learn More',
-        ctaHref: '/en/about',
-        variant: 'centered' as const,
-      },
-      {
-        blockType: 'featureGrid' as const,
-        heading: 'Key Capabilities',
-        columns: '3' as const,
-        features: [
-          { title: 'Multi-tenant', description: 'One codebase, many client sites.' },
-          { title: 'i18n', description: 'German, English, Vietnamese out of the box.' },
-          { title: 'On-demand ISR', description: 'Pages revalidate on content change.' },
-        ],
-      },
-    ],
-    meta: {
-      title: 'Fixture Tenant — Home',
-      description: 'Platform scaffold smoke test.',
+    pageTemplate: 'home',
+    heroSection: {
+      heading: 'Platform Scaffold Working',
+      subheading: 'This is the Phase 1 fixture tenant. Replace with real content.',
+      ctaLabel: 'Learn More',
+      ctaHref: '/en/about',
     },
-    tenant: Number(tenantId),
-    _status: 'published' as const,
-  }
-
-  if (existingHome.docs.length > 0) {
-    await payload.update({ collection: 'pages', id: existingHome.docs[0].id, data: homeData, locale: 'en' })
-  } else {
-    await payload.create({ collection: 'pages', data: homeData, locale: 'en' })
-  }
-
-  // Upsert about page (English)
-  const existingAbout = await payload.find({
-    collection: 'pages',
-    where: {
-      and: [
-        { slug: { equals: 'about' } },
-        { tenant: { equals: tenantId } },
+    featuresSection: {
+      heading: 'Key Capabilities',
+      features: [
+        { title: 'Multi-tenant', description: 'One codebase, many client sites.' },
+        { title: 'i18n', description: 'German, English, Vietnamese out of the box.' },
+        { title: 'On-demand ISR', description: 'Pages revalidate on content change.' },
       ],
     },
-    locale: 'en',
-    limit: 1,
+    meta: { title: 'Fixture Tenant — Home', description: 'Platform scaffold smoke test.' },
+    tenant,
+    _status: 'published' as const,
   })
 
-  const aboutData = {
+  await upsertPage('about', 'en', {
     title: 'About — Fixture Tenant',
     slug: 'about',
-    pageType: 'about' as const,
-    layout: [
-      {
-        blockType: 'richText' as const,
-        content: { root: { type: 'root', children: [], direction: null, format: '', indent: 0, version: 1 } },
-        maxWidth: 'prose' as const,
+    pageTemplate: 'about',
+    heroSection: { heading: 'About Fixture Tenant', subheading: 'Testing scaffold.' },
+    bodyContent: {
+      root: {
+        type: 'root',
+        children: [{ type: 'paragraph', version: 1, direction: 'ltr', format: '', indent: 0, children: [{ type: 'text', version: 1, text: 'Fixture about page content.' }] }],
+        direction: 'ltr', format: '', indent: 0, version: 1,
       },
-    ],
+    },
     meta: { title: 'About — Fixture Tenant' },
-    tenant: Number(tenantId),
+    tenant,
     _status: 'published' as const,
-  }
-
-  if (existingAbout.docs.length > 0) {
-    await payload.update({ collection: 'pages', id: existingAbout.docs[0].id, data: aboutData, locale: 'en' })
-  } else {
-    await payload.create({ collection: 'pages', data: aboutData, locale: 'en' })
-  }
+  })
 
   payload.logger.info(`✓ Fixture tenant seeded (id: ${tenantId})`)
 }

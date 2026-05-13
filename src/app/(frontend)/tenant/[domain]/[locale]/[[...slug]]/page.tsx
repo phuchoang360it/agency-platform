@@ -6,7 +6,6 @@ import { generateMetadata as buildMeta } from '@/lib/seo/generateMetadata'
 import { getPayloadClient } from '@/lib/payload'
 import { TenantPageRenderer } from '@/components/layouts/TenantPageRenderer'
 import type { Page } from '@/payload-types'
-import type { PageType } from '@/lib/tenant/types'
 
 // Dev-only preview route: /tenant/<domain>/<locale>/[[...slug]]
 // This mirrors the main catch-all but reads the domain from the URL param
@@ -90,7 +89,7 @@ export default async function DevPreviewPage({ params }: { params: Promise<Param
   }
 
   // Gate on per-tenant enabled page types (e.g. 'blog' disabled for Acme).
-  if (page.pageType && !config.enabledPages.includes(page.pageType as PageType)) {
+  if (page.pageTemplate && !config.enabledPages.includes(page.pageTemplate)) {
     notFound()
   }
 

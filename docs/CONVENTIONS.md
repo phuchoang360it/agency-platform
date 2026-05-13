@@ -1,82 +1,106 @@
 # Conventions
 
-## File naming
+## File structure
+
+```
+src/
+  tenants/
+    registry.ts              # imports + validates all tenant configs (Edge-safe)
+    <slug>/
+      tenant.config.ts       # TenantConfig — domains, locales, theme, nav
+      seed.ts                # idempotent DB seed
+      components/
+        Nav.tsx
+        Footer.tsx
+        pages/
+          <Template>.tsx     # one file per page template
+        renderer.tsx         # full page layout: Nav + dispatch + Footer
+  components/
+    layouts/
+      TenantPageRenderer.tsx # dispatches to per-tenant renderer by config.slug
+      theme.ts               # buildThemeCssVars helper
+    ui/                      # platform-level UI only (e.g. NoTenants fallback)
+  lib/
+    tenant/                  # tenant config loading + resolution utilities
+    revalidation/            # ISR tag helpers
+    seo/                     # metadata builders
+    i18n/                    # locale helpers
+  collections/               # Payload collection definitions
+  app/
+    (frontend)/              # public-facing Next.js routes
+    (payload)/               # Payload admin routes
+```
+
+---
+
+## Component isolation rules
+
+- **All tenant UI under `src/tenants/<slug>/components/`** — never under `src/components/`
+- **No cross-tenant imports**: `tenants/acme/` must never import from `tenants/otherclient/`
+- **No shared page components**: there is no shared `sections/` or similar directory
+- **Nav/Footer belong in `renderer.tsx`**: page components render content sections only
+- **`src/components/layouts/` is platform plumbing only**: `TenantPageRenderer` and theme helpers live there, no tenant-specific UI
+
+---
+
+## Naming
 
 | Thing | Convention | Example |
 |---|---|---|
-| React component file | PascalCase | `HeroComponent.tsx` |
-| Non-component TS | camelCase | `resolveTenant.ts` |
-| Payload collection | PascalCase | `Pages.ts` |
-| Payload block Payload config | `index.ts` inside block dir | `src/blocks/Hero/index.ts` |
-| Payload block React component | `Component.tsx` inside block dir | `src/blocks/Hero/Component.tsx` |
-| Tenant config | `tenant.config.ts` | `src/tenants/acme/tenant.config.ts` |
-| Tenant seed | `seed.ts` | `src/tenants/acme/seed.ts` |
+| Tenant slug | lowercase alphanum + hyphens | `acme`, `new-client` |
+| Page template key | lowercase kebab | `landing`, `portfolio-item` |
+| Renderer export | `render<Slug>Page` | `renderAcmePage` |
+| Component files | PascalCase | `HeroSection.tsx` |
+| Utility files | camelCase | `buildThemeCssVars.ts` |
+| Collection slugs | kebab plural | `pages`, `tenants`, `media` |
 
-## Where things go
+---
 
-| Category | Location |
-|---|---|
-| Payload collections | `src/collections/` |
-| Content blocks (Payload + React pair) | `src/blocks/<BlockName>/` |
-| Page-level layout variants | `src/components/layouts/` |
-| Shared UI primitives | `src/components/ui/` |
-| Tenant lib (types, resolution) | `src/lib/tenant/` |
-| i18n lib | `src/lib/i18n/` |
-| SEO lib | `src/lib/seo/` |
-| Revalidation lib | `src/lib/revalidation/` |
-| Tenant config + seed files | `src/tenants/<slug>/` |
-| App routes (frontend) | `src/app/(frontend)/` |
-| Admin routes | `src/app/(payload)/` |
-| API routes | `src/app/api/` |
-| Unit tests | `tests/unit/` |
-| E2E tests | `tests/e2e/` |
+## Payload Pages collection
 
-## When to add a block vs a layout vs a page type
+- `slug` — URL path segment. `home` maps to `/`. Use lowercase kebab only.
+- `pageTemplate` — free-text string matching a key in the tenant's `TEMPLATES` map. Not an enum.
+- Add new content fields as structured groups (not blocks). Editors see data fields only.
+- Never store layout config, component names, CSS classes, or positioning in CMS fields.
 
-**Block**: a self-contained content section (Hero, FeatureGrid, CTA, RichText). Can appear anywhere in the `layout` field of a Page. Add a block when a new content pattern emerges that doesn't map to an existing block.
-
-**Layout**: a page-type-specific arrangement of blocks. Controls the order and selection of blocks for a page type. Add a layout when a page type needs a structurally different presentation (not just different content).
-
-**Page type**: a named category of page (`home`, `about`, `services`, etc.). Tenant configs enable or disable page types. Add a page type when clients need a fundamentally different page category not covered by the generic `page` type.
-
-## Block pattern
-
-Every block is a pair of files:
-1. `src/blocks/<Name>/index.ts` — Payload `Block` config (fields, slug).
-2. `src/blocks/<Name>/Component.tsx` — React component that renders the block.
-
-The component's props type comes from `payload-types.ts` (auto-generated). The block slug in Payload must match the `blockType` discriminant in the type union.
-
-## Per-tenant design (not shared layout variants)
-
-Each tenant has its own design. There are **no shared layout variant components** that multiple tenants choose between. A tenant's look is fully determined by:
-
-1. **Theme tokens** in `tenant.config.ts` → injected as CSS vars → consumed by Tailwind utilities.
-2. **Block selection and content** in `seed.ts` → e.g. FeatureGrid(3-col) vs FeatureGrid(2-col).
-
-`TenantPageRenderer` renders blocks sequentially. If a tenant needs a structurally unique page structure (a real sidebar, a true split-panel), create a tenant-specific layout file in `src/tenants/<slug>/` and render it from that tenant's seed/config. Do **not** add shared layout components that all tenants select from.
-
-## Page-type gating
-
-The page component (`src/app/(frontend)/[locale]/[[...slug]]/page.tsx`) enforces `config.enabledPages` after fetching from the DB:
-
-```ts
-if (page.pageType && !config.enabledPages.includes(page.pageType as PageType)) {
-  notFound()
-}
+After changing the Pages collection schema:
+```bash
+pnpm migrate:create   # scaffold the SQL migration
+pnpm migrate          # apply it
+pnpm generate:types   # regenerate src/payload-types.ts
 ```
 
-This means adding a `blog` page in Payload for a tenant that has `blog` excluded from `enabledPages` will correctly 404 in the frontend. The same gate exists in the dev-preview route.
+---
 
-## Seed idempotency
+## Localization
 
-All seed functions must be idempotent: query by `slug + tenant.value` before create. Use the upsert helper pattern shown in `src/tenants/acme/seed.ts`. Re-running `pnpm tenant:seed <slug>` must be safe at any time.
+- Platform locales: `de`, `en`, `vi`
+- Each tenant enables a subset via `locales.enabled`
+- Locale-specific text fields have `localized: true` in the collection definition
+- Slugs and non-display fields are NOT localized
 
-## Commit style
+---
 
-`<type>(<scope>): <what>`
+## Tenant config
 
-Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
-Scopes: `tenant`, `blocks`, `middleware`, `i18n`, `seo`, `payload`, `deps`
+- `theme` values are CSS custom property values injected as inline style vars. Use hex colors, valid font stacks, and valid border-radius values.
+- `navigation` items must have a `slug` matching a seeded page's slug for the link to resolve.
+- `enabledPages` must list every `pageTemplate` value you intend to use — others return 404.
+- `pageTemplate` in `navigation` items is optional metadata — it doesn't affect routing, only provides context.
 
-Example: `feat(blocks): add Testimonials block`
+---
+
+## Seed scripts
+
+- Always use `upsertTenant` + `upsertPage` patterns (find-then-create-or-update)
+- Seeds must be safe to re-run — no hard failures, no duplicate docs
+- Use `pageTemplate: 'home'` (plain string, not `as const`) in seed data
+- Media is seeded via URL fetch. If MinIO/S3 is unavailable, `seedMedia` logs a warning and skips
+
+---
+
+## ISR tags
+
+Format: `tenant:<slug>`, `tenant:<slug>:<locale>`, `tenant:<slug>:<locale>:<page-slug>`
+
+Use `buildTag` and `buildRevalidationTags` from `src/lib/revalidation/tags.ts`. Never hardcode tag strings.

@@ -9,7 +9,6 @@ import { buildTag } from '@/lib/revalidation/tags'
 import { getPayloadClient } from '@/lib/payload'
 import { TenantPageRenderer } from '@/components/layouts/TenantPageRenderer'
 import type { Page } from '@/payload-types'
-import type { PageType } from '@/lib/tenant/types'
 import { unstable_cache } from 'next/cache'
 
 type Params = {
@@ -103,7 +102,7 @@ export default async function TenantPage({ params }: { params: Promise<Params> }
   }
 
   // Gate on per-tenant enabled page types (e.g. 'blog' disabled for Acme).
-  if (page.pageType && !config.enabledPages.includes(page.pageType as PageType)) {
+  if (page.pageTemplate && !config.enabledPages.includes(page.pageTemplate)) {
     notFound()
   }
 

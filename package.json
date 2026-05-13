@@ -17,7 +17,10 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "generate:types": "payload generate:types",
+    "generate:types": "node --import tsx node_modules/payload/bin.js generate:types",
+    "generate:importmap": "node --import tsx node_modules/payload/bin.js generate:importmap",
+    "migrate:create": "node --import tsx node_modules/payload/bin.js migrate:create",
+    "migrate": "node --import tsx node_modules/payload/bin.js migrate",
     "tenant:seed": "tsx scripts/tenant-seed.ts"
   },
   "dependencies": {

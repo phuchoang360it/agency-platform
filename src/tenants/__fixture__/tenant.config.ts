@@ -23,8 +23,8 @@ const config: TenantConfig = {
     home: 'home-layout-1',
   },
   navigation: [
-    { label: { en: 'Home', de: 'Start' }, slug: '', pageType: 'home' },
-    { label: { en: 'About', de: 'Über uns' }, slug: 'about', pageType: 'about' },
+    { label: { en: 'Home', de: 'Start' }, slug: '', pageTemplate: 'home' },
+    { label: { en: 'About', de: 'Über uns' }, slug: 'about', pageTemplate: 'about' },
   ],
 }
 
