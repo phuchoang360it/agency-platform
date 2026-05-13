@@ -1,4 +1,5 @@
 import type { TenantConfig } from '@/lib/tenant/types'
+import { devLinkPrefix } from '@/lib/tenant/devLinkPrefix'
 
 type Props = {
   config: TenantConfig
@@ -7,6 +8,7 @@ type Props = {
 
 export function Footer({ config, locale }: Props) {
   const year = new Date().getFullYear()
+  const prefix = devLinkPrefix(config)
 
   return (
     <footer className="bg-primary text-white/80">
@@ -20,7 +22,7 @@ export function Footer({ config, locale }: Props) {
             {config.navigation?.map((item) => (
               <a
                 key={item.slug}
-                href={`/${locale}${item.slug ? `/${item.slug}` : ''}`}
+                href={`${prefix}/${locale}${item.slug ? `/${item.slug}` : ''}`}
                 className="text-sm hover:text-white transition-colors"
               >
                 {item.label[locale] ?? item.label['en'] ?? item.slug}

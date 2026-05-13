@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { TenantConfig } from '@/lib/tenant/types'
+import { devLinkPrefix } from '@/lib/tenant/devLinkPrefix'
 
 type Props = {
   config: TenantConfig
@@ -11,12 +12,13 @@ type Props = {
 
 export function Nav({ config, locale, currentSlug = '' }: Props) {
   const [open, setOpen] = useState(false)
+  const prefix = devLinkPrefix(config)
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-gray-100 shadow-sm">
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <a
-          href={`/${locale}`}
+          href={`${prefix}/${locale}`}
           className="font-bold text-xl tracking-tight text-primary"
         >
           {config.name}
@@ -24,7 +26,7 @@ export function Nav({ config, locale, currentSlug = '' }: Props) {
 
         <ul className="hidden md:flex items-center gap-1">
           {config.navigation?.map((item) => {
-            const href = `/${locale}${item.slug ? `/${item.slug}` : ''}`
+            const href = `${prefix}/${locale}${item.slug ? `/${item.slug}` : ''}`
             const active = currentSlug === (item.slug || 'home')
             return (
               <li key={item.slug}>
@@ -48,7 +50,7 @@ export function Nav({ config, locale, currentSlug = '' }: Props) {
             {config.locales.enabled.map((loc) => (
               <a
                 key={loc}
-                href={`/${loc}`}
+                href={`${prefix}/${loc}`}
                 className={`px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors ${
                   loc === locale
                     ? 'bg-primary text-white'
@@ -81,7 +83,7 @@ export function Nav({ config, locale, currentSlug = '' }: Props) {
       {open && (
         <div className="md:hidden bg-white border-t border-gray-100 px-6 py-3 space-y-1">
           {config.navigation?.map((item) => {
-            const href = `/${locale}${item.slug ? `/${item.slug}` : ''}`
+            const href = `${prefix}/${locale}${item.slug ? `/${item.slug}` : ''}`
             return (
               <a
                 key={item.slug}
@@ -97,7 +99,7 @@ export function Nav({ config, locale, currentSlug = '' }: Props) {
             {config.locales.enabled.map((loc) => (
               <a
                 key={loc}
-                href={`/${loc}`}
+                href={`${prefix}/${loc}`}
                 className={`px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wide ${
                   loc === locale ? 'bg-primary text-white' : 'text-gray-400 hover:text-primary'
                 }`}
