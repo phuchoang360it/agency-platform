@@ -87,6 +87,7 @@ export default buildConfig({
       collections: {
         pages: {},
         media: {},
+        'payload-folders': {},
       },
 
       userHasAccessToAllTenants: (user) => {

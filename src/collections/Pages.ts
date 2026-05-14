@@ -73,109 +73,129 @@ export const Pages: CollectionConfig = {
       },
     },
     {
-      name: 'title',
-      type: 'text',
-      required: true,
-      localized: true,
-    },
-    {
-      name: 'slug',
-      type: 'text',
-      required: true,
-      admin: { description: 'URL slug, e.g. "about" → /en/about. Use "home" for the root page.' },
-    },
-    {
-      name: 'pageTemplate',
-      type: 'text',
-      admin: {
-        description: 'Template key mapping to a component in the tenant renderer (e.g. "home", "about", "portfolio-item").',
-      },
-      defaultValue: 'page',
-    },
-    {
-      name: 'heroSection',
-      type: 'group',
-      admin: {
-        description: 'Hero / page header section',
-        condition: (data, _) => ['home', 'about', 'services'].includes(data.pageTemplate as string),
-      },
-      fields: [
-        { name: 'heading', type: 'text', required: true, localized: true },
-        { name: 'subheading', type: 'text', localized: true },
-        { name: 'ctaLabel', type: 'text', localized: true, label: 'CTA Label' },
-        { name: 'ctaHref', type: 'text', label: 'CTA Link' },
-        { name: 'backgroundImage', type: 'upload', relationTo: 'media' },
-      ],
-    },
-    {
-      name: 'featuresSection',
-      type: 'group',
-      admin: {
-        description: 'Features / services grid section',
-        condition: (data, _) => ['home', 'services'].includes(data.pageTemplate as string),
-      },
-      fields: [
-        { name: 'heading', type: 'text', localized: true },
+      type: 'tabs',
+      tabs: [
         {
-          name: 'features',
-          type: 'array',
-          minRows: 1,
-          maxRows: 12,
+          label: 'Content',
           fields: [
-            { name: 'title', type: 'text', required: true, localized: true },
-            { name: 'description', type: 'textarea', localized: true },
-            { name: 'icon', type: 'text', admin: { description: 'Emoji or icon name' } },
+            {
+              name: 'heroSection',
+              type: 'group',
+              admin: {
+                description: 'Hero / page header section',
+                condition: (data, _) => ['home', 'about', 'services'].includes(data.pageTemplate as string),
+              },
+              fields: [
+                { name: 'heading', type: 'text', required: true, localized: true },
+                { name: 'subheading', type: 'text', localized: true },
+                { name: 'ctaLabel', type: 'text', localized: true, label: 'CTA Label' },
+                { name: 'ctaHref', type: 'text', label: 'CTA Link' },
+                { name: 'backgroundImage', type: 'upload', relationTo: 'media' },
+              ],
+            },
+            {
+              name: 'featuresSection',
+              type: 'group',
+              admin: {
+                description: 'Features / services grid section',
+                condition: (data, _) => ['home', 'services'].includes(data.pageTemplate as string),
+              },
+              fields: [
+                { name: 'heading', type: 'text', localized: true },
+                {
+                  name: 'features',
+                  type: 'array',
+                  minRows: 1,
+                  maxRows: 12,
+                  fields: [
+                    { name: 'title', type: 'text', required: true, localized: true },
+                    { name: 'description', type: 'textarea', localized: true },
+                    { name: 'icon', type: 'text', admin: { description: 'Emoji or icon name' } },
+                  ],
+                },
+              ],
+            },
+            {
+              name: 'bodyContent',
+              type: 'richText',
+              localized: true,
+              admin: {
+                description: 'Main body content',
+                condition: (data, _) => (data.pageTemplate as string) === 'about',
+              },
+            },
+            {
+              name: 'contactDetails',
+              type: 'group',
+              admin: {
+                description: 'Contact information',
+                condition: (data, _) => (data.pageTemplate as string) === 'contact',
+              },
+              fields: [
+                { name: 'address', type: 'text', localized: true },
+                { name: 'phone', type: 'text' },
+                { name: 'email', type: 'text' },
+                { name: 'hours', type: 'text', localized: true },
+              ],
+            },
+            {
+              name: 'ctaSection',
+              type: 'group',
+              admin: {
+                description: 'Call to action section',
+                condition: (data, _) => ['home', 'services', 'contact'].includes(data.pageTemplate as string),
+              },
+              fields: [
+                { name: 'heading', type: 'text', localized: true },
+                { name: 'body', type: 'textarea', localized: true },
+                { name: 'primaryLabel', type: 'text', localized: true },
+                { name: 'primaryHref', type: 'text' },
+                { name: 'secondaryLabel', type: 'text', localized: true },
+                { name: 'secondaryHref', type: 'text' },
+              ],
+            },
           ],
         },
-      ],
-    },
-    {
-      name: 'bodyContent',
-      type: 'richText',
-      localized: true,
-      admin: {
-        description: 'Main body content',
-        condition: (data, _) => (data.pageTemplate as string) === 'about',
-      },
-    },
-    {
-      name: 'contactDetails',
-      type: 'group',
-      admin: {
-        description: 'Contact information',
-        condition: (data, _) => (data.pageTemplate as string) === 'contact',
-      },
-      fields: [
-        { name: 'address', type: 'text', localized: true },
-        { name: 'phone', type: 'text' },
-        { name: 'email', type: 'text' },
-        { name: 'hours', type: 'text', localized: true },
-      ],
-    },
-    {
-      name: 'ctaSection',
-      type: 'group',
-      admin: {
-        description: 'Call to action section',
-        condition: (data, _) => ['home', 'services', 'contact'].includes(data.pageTemplate as string),
-      },
-      fields: [
-        { name: 'heading', type: 'text', localized: true },
-        { name: 'body', type: 'textarea', localized: true },
-        { name: 'primaryLabel', type: 'text', localized: true },
-        { name: 'primaryHref', type: 'text' },
-        { name: 'secondaryLabel', type: 'text', localized: true },
-        { name: 'secondaryHref', type: 'text' },
-      ],
-    },
-    {
-      name: 'meta',
-      type: 'group',
-      label: 'SEO',
-      fields: [
-        { name: 'title', type: 'text', localized: true },
-        { name: 'description', type: 'textarea', localized: true },
-        { name: 'ogImage', type: 'upload', relationTo: 'media' },
+        {
+          label: 'Meta',
+          fields: [
+            {
+              name: 'title',
+              type: 'text',
+              required: true,
+              localized: true,
+            },
+            {
+              name: 'slug',
+              type: 'text',
+              required: true,
+              admin: { description: 'URL slug, e.g. "about" → /en/about. Use "home" for the root page.' },
+            },
+            {
+              name: 'pageTemplate',
+              type: 'text',
+              admin: {
+                description: 'Template key mapping to a component in the tenant renderer (e.g. "home", "about", "portfolio-item").',
+              },
+              defaultValue: 'page',
+            },
+          ],
+        },
+        {
+          label: 'SEO',
+          fields: [
+            {
+              name: 'meta',
+              type: 'group',
+              label: 'SEO',
+              fields: [
+                { name: 'title', type: 'text', localized: true },
+                { name: 'description', type: 'textarea', localized: true },
+                { name: 'ogImage', type: 'upload', relationTo: 'media' },
+              ],
+            },
+          ],
+        },
       ],
     },
   ],
