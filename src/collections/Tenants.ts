@@ -63,7 +63,7 @@ export const Tenants: CollectionConfig = {
         defaultColumns: ['title', 'slug', 'pageTemplate'],
         description: 'Pages belonging to this tenant. Click a row to open its editor.',
         components: {
-          Field: 'admin/components/TenantPagesField#TenantPagesField',
+          Field: 'components/payloadCMS/TenantPagesField#TenantPagesField',
         },
       },
     },

@@ -25,6 +25,9 @@
       ],
       "admin/components/*": [
         "./src/admin/components/*"
+      ],
+      "components/*": [
+        "./src/components/*"
       ]
     },
     "baseUrl": ".",

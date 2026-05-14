@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
       ...(typeof config.resolve.alias === 'object' && !Array.isArray(config.resolve.alias)
         ? config.resolve.alias
         : {}),
-      'admin/components': path.resolve('./src/admin/components'),
+      'components': path.resolve('./src/components'),
     }
     return config
   },

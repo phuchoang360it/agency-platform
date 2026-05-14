@@ -68,7 +68,7 @@ export const Pages: CollectionConfig = {
       type: 'ui',
       admin: {
         components: {
-          Field: 'admin/components/TenantBreadcrumb#TenantBreadcrumb',
+          Field: 'components/payloadCMS/TenantBreadcrumb#TenantBreadcrumb',
         },
       },
     },
