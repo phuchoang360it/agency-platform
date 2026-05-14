@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { TenantConfig } from '@/lib/tenant/types'
 import { devLinkPrefix } from '@/lib/tenant/devLinkPrefix'
+import { LocaleSwitcher } from '@/components/ui/LocaleSwitcher'
 
 type Props = {
   config: TenantConfig
@@ -47,19 +48,14 @@ export function Nav({ config, locale, currentSlug = '' }: Props) {
 
         <div className="flex items-center gap-3">
           <div className="hidden md:flex items-center gap-1">
-            {config.locales.enabled.map((loc) => (
-              <a
-                key={loc}
-                href={`${prefix}/${loc}`}
-                className={`px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors ${
-                  loc === locale
-                    ? 'bg-primary text-white'
-                    : 'text-gray-400 hover:text-primary hover:bg-primary/5'
-                }`}
-              >
-                {loc}
-              </a>
-            ))}
+            <LocaleSwitcher
+              config={config}
+              locale={locale}
+              currentSlug={currentSlug}
+              className="px-2.5 py-1 rounded-md text-xs font-semibold uppercase tracking-wide transition-colors"
+              activeClassName="bg-primary text-white"
+              inactiveClassName="text-gray-400 hover:text-primary hover:bg-primary/5"
+            />
           </div>
 
           <button
@@ -96,17 +92,14 @@ export function Nav({ config, locale, currentSlug = '' }: Props) {
             )
           })}
           <div className="flex gap-2 px-4 pt-2 pb-1">
-            {config.locales.enabled.map((loc) => (
-              <a
-                key={loc}
-                href={`${prefix}/${loc}`}
-                className={`px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wide ${
-                  loc === locale ? 'bg-primary text-white' : 'text-gray-400 hover:text-primary'
-                }`}
-              >
-                {loc}
-              </a>
-            ))}
+            <LocaleSwitcher
+              config={config}
+              locale={locale}
+              currentSlug={currentSlug}
+              className="px-2.5 py-1 rounded text-xs font-semibold uppercase tracking-wide"
+              activeClassName="bg-primary text-white"
+              inactiveClassName="text-gray-400 hover:text-primary"
+            />
           </div>
         </div>
       )}

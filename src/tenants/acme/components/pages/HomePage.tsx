@@ -7,9 +7,9 @@ type Props = {
   locale: string
 }
 
-function imageUrl(img: string | Media | null | undefined): string | null {
+function imageUrl(img: number | string | Media | null | undefined): string | null {
   if (!img) return null
-  if (typeof img === 'string') return null
+  if (typeof img === 'number' || typeof img === 'string') return null
   return img.url ?? null
 }
 

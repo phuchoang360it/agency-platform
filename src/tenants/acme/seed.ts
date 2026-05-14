@@ -58,7 +58,8 @@ async function upsertPage(
   if (existing.docs.length > 0) {
     await payload.update({ collection: 'pages', id: existing.docs[0].id, data, locale })
   } else {
-    await payload.create({ collection: 'pages', data, locale })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await payload.create({ collection: 'pages', data: data as any, locale, draft: false })
   }
 }
 

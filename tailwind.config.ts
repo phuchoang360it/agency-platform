@@ -5,6 +5,7 @@ const config: Config = {
     './src/app/**/*.{ts,tsx}',
     './src/components/**/*.{ts,tsx}',
     './src/blocks/**/*.{ts,tsx}',
+    './src/tenants/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {
