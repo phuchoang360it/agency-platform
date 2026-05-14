@@ -53,5 +53,19 @@ export const Tenants: CollectionConfig = {
       defaultValue: true,
       label: 'Active',
     },
+    {
+      name: 'pages',
+      type: 'join',
+      collection: 'pages',
+      on: 'tenant',
+      label: 'Pages',
+      admin: {
+        defaultColumns: ['title', 'slug', 'pageTemplate'],
+        description: 'Pages belonging to this tenant. Click a row to open its editor.',
+        components: {
+          Field: 'admin/components/TenantPagesField#TenantPagesField',
+        },
+      },
+    },
   ],
 }

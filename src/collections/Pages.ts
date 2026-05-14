@@ -64,6 +64,15 @@ export const Pages: CollectionConfig = {
   },
   fields: [
     {
+      name: 'tenantBreadcrumb',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: 'admin/components/TenantBreadcrumb#TenantBreadcrumb',
+        },
+      },
+    },
+    {
       name: 'title',
       type: 'text',
       required: true,

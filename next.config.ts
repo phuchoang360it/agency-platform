@@ -1,7 +1,17 @@
 import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
+import path from 'path'
 
 const nextConfig: NextConfig = {
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...(typeof config.resolve.alias === 'object' && !Array.isArray(config.resolve.alias)
+        ? config.resolve.alias
+        : {}),
+      'admin/components': path.resolve('./src/admin/components'),
+    }
+    return config
+  },
   // Images served from MinIO (S3-compatible)
   images: {
     remotePatterns: [

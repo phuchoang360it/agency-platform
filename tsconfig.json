@@ -22,6 +22,9 @@
       ],
       "@payload-config": [
         "./src/payload.config.ts"
+      ],
+      "admin/components/*": [
+        "./src/admin/components/*"
       ]
     },
     "baseUrl": ".",
