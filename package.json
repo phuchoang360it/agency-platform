@@ -25,6 +25,8 @@
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.0.0",
+    "@payloadcms/live-preview": "^3.84.1",
+    "@payloadcms/live-preview-react": "^3.84.1",
     "@payloadcms/next": "^3.0.0",
     "@payloadcms/plugin-multi-tenant": "^3.0.0",
     "@payloadcms/richtext-lexical": "^3.0.0",

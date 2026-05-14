@@ -1,12 +1,8 @@
 import type { ReactNode } from 'react'
 
-// Minimal root layout — provides the <html>/<body> shell.
-// Tailwind globals and tenant themes are applied in (frontend)/layout.tsx
-// to avoid bleeding into the Payload admin CSS.
+// Root layout is a passthrough — each route group owns its own <html>/<body>.
+// (frontend)/layout.tsx handles frontend; Payload admin uses @payloadcms/next/layouts RootLayout.
+// Nesting <html> elements here causes hydration mismatches with Payload's RootLayout.
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  )
+  return children as React.ReactElement
 }

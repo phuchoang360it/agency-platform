@@ -74,6 +74,7 @@ export default async function DevPreviewPage({ params }: { params: Promise<Param
     locale: locale as 'de' | 'en' | 'vi',
     depth: 2,
     limit: 1,
+    draft: true,
   })
 
   const page = result.docs[0] as Page | undefined

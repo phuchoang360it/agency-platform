@@ -47,6 +47,15 @@ export const Pages: CollectionConfig = {
     useAsTitle: 'title',
     defaultColumns: ['title', 'slug', 'pageTemplate', 'updatedAt'],
     description: 'Content pages scoped to a tenant. One page per locale variant is stored.',
+    livePreview: {
+      url: ({ data, locale }) => {
+        const id = data?.id
+        if (!id) return null
+        const localeCode = locale?.code ?? 'en'
+        const serverUrl = process.env.PAYLOAD_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
+        return `${serverUrl}/preview?id=${id}&locale=${localeCode}`
+      },
+    },
   },
   versions: {
     drafts: {
