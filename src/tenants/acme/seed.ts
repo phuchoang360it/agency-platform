@@ -1,5 +1,13 @@
-import type { Payload } from 'payload'
+import { readFileSync } from 'fs'
+import { dirname, resolve } from 'path'
+import { fileURLToPath } from 'url'
+import type { Payload, Where } from 'payload'
 import type { TenantConfig } from '@/lib/tenant/types'
+
+const PLACEHOLDER = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../asset/placholder/image-placeholder-large.jpg',
+)
 
 // ── Upsert helpers ────────────────────────────────────────────────────────────
 
@@ -63,25 +71,44 @@ async function upsertPage(
   }
 }
 
+// ── Media folder seeding ──────────────────────────────────────────────────────
+
+async function upsertMediaFolder(payload: Payload, name: string, parentId?: string): Promise<string> {
+  const where: Where = parentId
+    ? { and: [{ name: { equals: name } }, { parent: { equals: parentId } }] }
+    : { name: { equals: name } }
+  const existing = await payload.find({ collection: 'media-folders', where, limit: 1 })
+  if (existing.docs.length > 0) return String(existing.docs[0].id)
+  const created = await payload.create({
+    collection: 'media-folders',
+    data: parentId ? { name, parent: Number(parentId) } : { name },
+  })
+  return String(created.id)
+}
+
 // ── Media seeding ─────────────────────────────────────────────────────────────
 
 async function seedMedia(
   payload: Payload,
   tenantId: string,
-  items: Array<{ url: string; alt: string; filename: string }>,
+  folderId: string,
+  items: Array<{ alt: string; filename: string }>,
 ): Promise<string[]> {
   const ids: string[] = []
 
+  let buffer: Buffer
+  try {
+    buffer = readFileSync(PLACEHOLDER)
+  } catch (err) {
+    payload.logger.warn(`Placeholder image not found, media seed skipped: ${String(err)}`)
+    return ids
+  }
+
   for (const item of items) {
     try {
-      const res = await fetch(item.url)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const arrayBuf = await res.arrayBuffer()
-      const buffer = Buffer.from(arrayBuf)
-
       const created = await payload.create({
         collection: 'media',
-        data: { alt: item.alt, tenant: Number(tenantId) },
+        data: { alt: item.alt, tenant: Number(tenantId), folder: Number(folderId) },
         file: {
           data: buffer,
           mimetype: 'image/jpeg',
@@ -105,12 +132,20 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   const tenantId = await upsertTenant(payload, config)
   payload.logger.info(`Tenant upserted (id: ${tenantId})`)
 
-  // 2. Media (Picsum placeholders — skipped if MinIO unavailable)
-  const mediaIds = await seedMedia(payload, tenantId, [
-    { url: 'https://picsum.photos/seed/acme-hero/1600/900', alt: 'Acme hero image', filename: 'acme-hero.jpg' },
-    { url: 'https://picsum.photos/seed/acme-about/1200/800', alt: 'Acme team photo', filename: 'acme-about.jpg' },
-    { url: 'https://picsum.photos/seed/acme-office/1200/800', alt: 'Acme office', filename: 'acme-office.jpg' },
-  ])
+  // 2. Media folders — root + one sub-folder per page
+  const folderId = await upsertMediaFolder(payload, config.name)
+  payload.logger.info(`Media folder upserted: "${config.name}" (id: ${folderId})`)
+
+  const homeFolderId  = await upsertMediaFolder(payload, 'home',     folderId)
+  const aboutFolderId = await upsertMediaFolder(payload, 'about',    folderId)
+  await upsertMediaFolder(payload, 'services', folderId)
+  await upsertMediaFolder(payload, 'contact',  folderId)
+  payload.logger.info(`Page sub-folders upserted under root folder ${folderId}`)
+
+  // 3. Media (placeholder — skipped if MinIO unavailable), routed per page folder
+  const heroIds  = await seedMedia(payload, tenantId, homeFolderId,  [{ alt: 'Acme hero image', filename: 'acme-hero.jpg' }])
+  const aboutIds = await seedMedia(payload, tenantId, aboutFolderId, [{ alt: 'Acme team photo', filename: 'acme-about.jpg' }, { alt: 'Acme office', filename: 'acme-office.jpg' }])
+  const mediaIds = [...heroIds, ...aboutIds]
 
   const tenant = Number(tenantId)
 
@@ -125,7 +160,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
       subheading: 'Acme GmbH delivers consulting, implementation, and support that drives measurable results for your organisation.',
       ctaLabel: 'Explore Our Services',
       ctaHref: '/en/services',
-      backgroundImage: mediaIds[0] ?? null,
+      backgroundImage: mediaIds[0] ? Number(mediaIds[0]) : null,
     },
     featuresSection: {
       heading: 'Why Acme?',
@@ -160,7 +195,7 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
       subheading: 'Acme GmbH liefert Beratung, Umsetzung und Support, der messbare Ergebnisse für Ihr Unternehmen erzielt.',
       ctaLabel: 'Unsere Leistungen entdecken',
       ctaHref: '/de/services',
-      backgroundImage: mediaIds[0] ?? null,
+      backgroundImage: mediaIds[0] ? Number(mediaIds[0]) : null,
     },
     featuresSection: {
       heading: 'Warum Acme?',

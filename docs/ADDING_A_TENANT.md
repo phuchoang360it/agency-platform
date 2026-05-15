@@ -165,13 +165,15 @@ function renderPage(page: Page, config: TenantConfig, locale: string) {
 src/tenants/<slug>/seed.ts
 ```
 
-The seed script creates the tenant DB row and upserts all pages with their content. Run:
+The seed script creates the tenant DB row, a root media folder, and upserts all pages with their content. Run:
 
 ```bash
 pnpm tenant:seed newclient
 ```
 
 The seed is idempotent — safe to re-run. Existing docs are updated, not duplicated.
+
+**Media folder convention:** at the start of `seed()`, call `upsertMediaFolder(payload, config.name)` to create a root folder named after the tenant (e.g. `"New Client GmbH"`). Pass the returned `folderId` to `seedMedia()` so all seeded images are filed under that folder. See `src/tenants/acme/seed.ts` for the reference implementation.
 
 Use `pageTemplate: 'landing'` (string, not `as const`) in seed data.
 

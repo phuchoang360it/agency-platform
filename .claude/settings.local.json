@@ -21,7 +21,10 @@
       "Bash(node *)",
       "Bash(xargs -I {} cat {})",
       "Bash(xargs grep -n \"loadedEnvFiles\")",
-      "Bash(pnpm typecheck *)"
+      "Bash(pnpm typecheck *)",
+      "Bash(pnpm lint *)",
+      "Bash(pnpm migrate:create *)",
+      "Bash(pnpm generate:types *)"
     ]
   }
 }

@@ -13,16 +13,24 @@ type Props = {
   locale: string
 }
 
+// Live preview overlay keyed to server page version.
+// Key combines id + updatedAt so the overlay auto-invalidates after router.refresh().
+type PageOverlay = { key: string; merged: Page }
+
+function pageKey(p: Page) {
+  return `${p.id}:${p.updatedAt}`
+}
+
 export function DevPreviewRenderer({ config, page, locale }: Props) {
   const router = useRouter()
-  const [liveData, setLiveData] = useState<Page>(page)
+  // null = no live edits yet; overlay invalidates when server page version changes
+  const [overlay, setOverlay] = useState<PageOverlay | null>(null)
   const serverURL = process.env.NEXT_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
   const hasSentReady = useRef(false)
 
-  // Sync when server provides fresh data (e.g. after router.refresh())
-  useEffect(() => {
-    setLiveData(page)
-  }, [page])
+  // Use overlay only while it matches the current server page version.
+  // When page changes (e.g. after router.refresh()), overlay is ignored automatically.
+  const liveData = overlay?.key === pageKey(page) ? overlay.merged : page
 
   useEffect(() => {
     if (!hasSentReady.current) {
@@ -35,43 +43,50 @@ export function DevPreviewRenderer({ config, page, locale }: Props) {
 
       if (event.data.type === 'payload-live-preview' && event.data.data) {
         const incoming = event.data.data as Partial<Page>
-        setLiveData(prev => ({
-          ...prev,
-          ...incoming,
-          // Preserve populated tenant — form data has it as an ID
-          tenant: prev.tenant,
-          // Keep populated backgroundImage when form data only has an ID
-          heroSection: incoming.heroSection
-            ? {
-                ...prev.heroSection,
-                ...(incoming.heroSection as typeof prev.heroSection),
-                backgroundImage:
-                  typeof (incoming.heroSection as typeof prev.heroSection)?.backgroundImage === 'object'
-                    ? (incoming.heroSection as typeof prev.heroSection)?.backgroundImage
-                    : prev.heroSection?.backgroundImage,
-              }
-            : prev.heroSection,
-          // Keep populated ogImage when form data only has an ID
-          meta: incoming.meta
-            ? {
-                ...prev.meta,
-                ...(incoming.meta as typeof prev.meta),
-                ogImage:
-                  typeof (incoming.meta as typeof prev.meta)?.ogImage === 'object'
-                    ? (incoming.meta as typeof prev.meta)?.ogImage
-                    : prev.meta?.ogImage,
-              }
-            : prev.meta,
-        } as Page))
+        setOverlay(prev => {
+          const key = pageKey(page)
+          const base = prev?.key === key ? prev.merged : page
+          return {
+            key,
+            merged: {
+              ...base,
+              ...incoming,
+              // Preserve populated tenant — form data has it as an ID
+              tenant: base.tenant,
+              // Keep populated backgroundImage when form data only has an ID
+              heroSection: incoming.heroSection
+                ? {
+                    ...base.heroSection,
+                    ...(incoming.heroSection as typeof base.heroSection),
+                    backgroundImage:
+                      typeof (incoming.heroSection as typeof base.heroSection)?.backgroundImage === 'object'
+                        ? (incoming.heroSection as typeof base.heroSection)?.backgroundImage
+                        : base.heroSection?.backgroundImage,
+                  }
+                : base.heroSection,
+              // Keep populated ogImage when form data only has an ID
+              meta: incoming.meta
+                ? {
+                    ...base.meta,
+                    ...(incoming.meta as typeof base.meta),
+                    ogImage:
+                      typeof (incoming.meta as typeof base.meta)?.ogImage === 'object'
+                        ? (incoming.meta as typeof base.meta)?.ogImage
+                        : base.meta?.ogImage,
+                  }
+                : base.meta,
+            } as Page,
+          }
+        })
       } else if (event.data.type === 'payload-document-event') {
-        // After autosave/publish: sync latest draft from server
+        // After autosave/publish: fetch latest draft from server; overlay invalidates automatically
         router.refresh()
       }
     }
 
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)
-  }, [router, serverURL])
+  }, [router, serverURL, page])
 
   return <TenantPageRenderer config={config} page={liveData} locale={locale} />
 }

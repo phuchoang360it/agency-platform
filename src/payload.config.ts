@@ -9,6 +9,7 @@ import { Tenants } from './collections/Tenants'
 import { Users } from './collections/Users'
 import { Pages } from './collections/Pages'
 import { Media } from './collections/Media'
+import { MediaFolders } from './collections/MediaFolders'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -26,7 +27,7 @@ export default buildConfig({
   },
 
   // ── Collections ────────────────────────────────────────────────────────────
-  collections: [Tenants, Users, Pages, Media],
+  collections: [Tenants, Users, Pages, Media, MediaFolders],
 
   // ── Editor ─────────────────────────────────────────────────────────────────
   editor: lexicalEditor(),
@@ -60,11 +61,12 @@ export default buildConfig({
         media: {
           prefix: 'media',
           disableLocalStorage: true,
-          generateFileURL: ({ filename: fname }) => {
+          generateFileURL: ({ filename: fname, prefix: docPrefix }) => {
             const endpoint = process.env.S3_ENDPOINT ?? 'http://localhost:9000'
             const bucket = process.env.S3_BUCKET ?? 'media'
-            // Path-style URL required for MinIO: http://host:9000/bucket/file
-            return `${endpoint}/${bucket}/media/${fname}`
+            const slug = docPrefix || 'media'
+            // Path-style URL required for MinIO: http://host:9000/bucket/tenant/file
+            return `${endpoint}/${bucket}/${slug}/${fname}`
           },
         },
       },
@@ -87,7 +89,6 @@ export default buildConfig({
       collections: {
         pages: {},
         media: {},
-        'payload-folders': {},
       },
 
       userHasAccessToAllTenants: (user) => {

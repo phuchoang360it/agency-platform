@@ -7,18 +7,23 @@ type PageRow = { id: string; title?: string; slug: string; pageTemplate?: string
 export const TenantPagesField: React.FC = () => {
   const { id } = useDocumentInfo()
   const [pages, setPages] = useState<PageRow[]>([])
-  const [loading, setLoading] = useState(false)
+  // Track which tenant id the current pages belong to.
+  // loading is true when id is set but fetch for it hasn't completed yet.
+  const [fetchedForId, setFetchedForId] = useState<typeof id>(undefined)
+  const loading = !!id && fetchedForId !== id
 
   useEffect(() => {
     if (!id) return
-    setLoading(true)
     fetch(`/api/pages?where[tenant][equals]=${id}&limit=100&depth=0`)
       .then(r => r.json())
       .then(data => {
         setPages(data.docs ?? [])
-        setLoading(false)
+        setFetchedForId(id)
       })
-      .catch(() => setLoading(false))
+      .catch(() => {
+        setPages([])
+        setFetchedForId(id)
+      })
   }, [id])
 
   if (!id)
