@@ -1,9 +1,33 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Payload } from 'payload'
+
+async function resolveFolderPath(payload: Payload, folderVal: unknown): Promise<string> {
+  const id = typeof folderVal === 'string' ? folderVal
+    : typeof folderVal === 'number' ? String(folderVal)
+    : folderVal && typeof folderVal === 'object'
+      ? String((folderVal as { id?: string | number }).id ?? '')
+      : ''
+  if (!id) return ''
+
+  const parts: string[] = []
+  let currentId: string | null = id
+
+  while (currentId) {
+    const folderDoc = await payload.findByID({ collection: 'media-folders', id: currentId, depth: 0 }) as unknown as Record<string, unknown>
+    if (!folderDoc) break
+    parts.unshift(String(folderDoc.name ?? ''))
+    const p: unknown = folderDoc.parent
+    if (!p) { currentId = null; break }
+    if (typeof p === 'string') { currentId = p }
+    else if (typeof p === 'number') { currentId = String(p) }
+    else { currentId = String((p as { id?: string | number }).id ?? '') || null }
+  }
+
+  return parts.join('/')
+}
 
 export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
-    hidden: true,
     defaultColumns: ['filename', 'alt', 'updatedAt'],
   },
   upload: {
@@ -28,8 +52,12 @@ export const Media: CollectionConfig = {
         if (!tenantId) return data
         try {
           const tenant = await req.payload.findByID({ collection: 'tenants', id: tenantId, depth: 0 })
-          const slug = (tenant as unknown as { slug?: string })?.slug ?? 'media'
-          return { ...data, prefix: slug, tenantSlug: slug }
+          const tenantDoc = tenant as unknown as { slug?: string; name?: string }
+          const slug = tenantDoc?.slug ?? 'media'
+          const tenantName = tenantDoc?.name ?? slug
+          const folderPath = await resolveFolderPath(req.payload, data.folder)
+          const prefix = folderPath || tenantName
+          return { ...data, prefix, tenantSlug: slug }
         } catch {
           return data
         }

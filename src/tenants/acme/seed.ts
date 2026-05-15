@@ -73,15 +73,22 @@ async function upsertPage(
 
 // ── Media folder seeding ──────────────────────────────────────────────────────
 
-async function upsertMediaFolder(payload: Payload, name: string, parentId?: string): Promise<string> {
+async function upsertMediaFolder(payload: Payload, tenantId: string, name: string, parentId?: string): Promise<string> {
   const where: Where = parentId
-    ? { and: [{ name: { equals: name } }, { parent: { equals: parentId } }] }
-    : { name: { equals: name } }
+    ? { and: [{ name: { equals: name } }, { parent: { equals: parentId } }, { tenant: { equals: tenantId } }] }
+    : { and: [{ name: { equals: name } }, { parent: { exists: false } }, { tenant: { equals: tenantId } }] }
   const existing = await payload.find({ collection: 'media-folders', where, limit: 1 })
-  if (existing.docs.length > 0) return String(existing.docs[0].id)
+  if (existing.docs.length > 0) {
+    await payload.update({
+      collection: 'media-folders',
+      id: existing.docs[0].id,
+      data: { name, tenant: Number(tenantId), ...(parentId ? { parent: Number(parentId) } : {}) },
+    })
+    return String(existing.docs[0].id)
+  }
   const created = await payload.create({
     collection: 'media-folders',
-    data: parentId ? { name, parent: Number(parentId) } : { name },
+    data: { name, tenant: Number(tenantId), ...(parentId ? { parent: Number(parentId) } : {}) },
   })
   return String(created.id)
 }
@@ -133,13 +140,13 @@ export async function seed(payload: Payload, config: TenantConfig): Promise<void
   payload.logger.info(`Tenant upserted (id: ${tenantId})`)
 
   // 2. Media folders — root + one sub-folder per page
-  const folderId = await upsertMediaFolder(payload, config.name)
+  const folderId = await upsertMediaFolder(payload, tenantId, config.name)
   payload.logger.info(`Media folder upserted: "${config.name}" (id: ${folderId})`)
 
-  const homeFolderId  = await upsertMediaFolder(payload, 'home',     folderId)
-  const aboutFolderId = await upsertMediaFolder(payload, 'about',    folderId)
-  await upsertMediaFolder(payload, 'services', folderId)
-  await upsertMediaFolder(payload, 'contact',  folderId)
+  const homeFolderId  = await upsertMediaFolder(payload, tenantId, 'home',     folderId)
+  const aboutFolderId = await upsertMediaFolder(payload, tenantId, 'about',    folderId)
+  await upsertMediaFolder(payload, tenantId, 'services', folderId)
+  await upsertMediaFolder(payload, tenantId, 'contact',  folderId)
   payload.logger.info(`Page sub-folders upserted under root folder ${folderId}`)
 
   // 3. Media (placeholder — skipped if MinIO unavailable), routed per page folder

@@ -89,6 +89,7 @@ export default buildConfig({
       collections: {
         pages: {},
         media: {},
+        'media-folders': {},
       },
 
       userHasAccessToAllTenants: (user) => {
