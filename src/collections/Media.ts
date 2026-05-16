@@ -29,8 +29,16 @@ export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
     defaultColumns: ['filename', 'alt', 'updatedAt'],
+    components: {
+      views: {
+        list: {
+          Component: 'components/payloadCMS/MediaListView#MediaListView',
+        },
+      },
+    },
   },
   upload: {
+    bulkUpload: false,
     // Sizes for responsive images. Payload + Sharp generates these on upload.
     imageSizes: [
       { name: 'thumbnail', width: 400, height: undefined, position: 'centre' },
