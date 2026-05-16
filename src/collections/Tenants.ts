@@ -21,51 +21,84 @@ export const Tenants: CollectionConfig = {
   },
   fields: [
     {
-      name: 'name',
-      type: 'text',
-      required: true,
-      label: 'Display Name',
-    },
-    {
-      name: 'slug',
-      type: 'text',
-      required: true,
-      unique: true,
-      label: 'Slug',
-      admin: { description: 'Must match the directory name under src/tenants/' },
-    },
-    {
-      name: 'domains',
-      type: 'array',
-      label: 'Domains',
-      admin: { description: 'Domains that resolve to this tenant (without protocol).' },
-      fields: [
-        {
-          name: 'domain',
-          type: 'text',
-          required: true,
-        },
-      ],
-    },
-    {
       name: 'active',
       type: 'checkbox',
       defaultValue: true,
       label: 'Active',
-    },
-    {
-      name: 'pages',
-      type: 'join',
-      collection: 'pages',
-      on: 'tenant',
-      label: 'Pages',
       admin: {
-        defaultColumns: ['title', 'slug', 'pageTemplate'],
-        description: 'Pages belonging to this tenant. Click a row to open its editor.',
+        position: 'sidebar',
         components: {
-          Field: 'components/payloadCMS/TenantPagesField#TenantPagesField',
+          Field: 'components/payloadCMS/TenantActiveField#TenantActiveField',
         },
       },
+    },
+    {
+      name: 'mediaFolderLink',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: 'components/payloadCMS/TenantMediaFolderField#TenantMediaFolderField',
+        },
+      },
+    },
+    {
+      type: 'tabs',
+      tabs: [
+        {
+          label: 'Site Identity',
+          description: 'Display name, slug, and domain configuration for this tenant.',
+          fields: [
+            {
+              name: 'name',
+              type: 'text',
+              required: true,
+              label: 'Display Name',
+            },
+            {
+              name: 'slug',
+              type: 'text',
+              required: true,
+              unique: true,
+              label: 'Slug',
+              admin: { description: 'Must match the directory name under src/tenants/' },
+            },
+            {
+              name: 'domains',
+              type: 'array',
+              label: 'Domains',
+              admin: { description: 'Domains that resolve to this tenant (without protocol).' },
+              fields: [
+                {
+                  name: 'domain',
+                  type: 'text',
+                  required: true,
+                },
+              ],
+            },
+          ],
+        },
+        {
+          label: 'Pages',
+          description: 'Pages belonging to this tenant.',
+          fields: [
+            {
+              name: 'pages',
+              type: 'join',
+              collection: 'pages',
+              on: 'tenant',
+              label: 'Pages',
+              admin: {
+                defaultColumns: ['title', 'slug', 'pageTemplate'],
+                description: 'Click a row to open its editor.',
+                components: {
+                  Field: 'components/payloadCMS/TenantPagesField#TenantPagesField',
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
   ],
 }

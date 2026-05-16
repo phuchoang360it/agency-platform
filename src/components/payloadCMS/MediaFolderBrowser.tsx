@@ -54,6 +54,13 @@ export const MediaFolderBrowser: React.FC = () => {
   const [newFolderName, setNewFolderName] = useState('')
   const [creatingFolder, setCreatingFolder] = useState(false)
   const [createFolderError, setCreateFolderError] = useState<string | null>(null)
+  const [mediaPage, setMediaPage] = useState<number>(() => {
+    if (typeof window === 'undefined') return 1
+    return parseInt(new URLSearchParams(window.location.search).get('page') ?? '1', 10) || 1
+  })
+  const [mediaTotalPages, setMediaTotalPages] = useState(1)
+  const [mediaTotalDocs, setMediaTotalDocs] = useState(0)
+  const [mediaLimit, setMediaLimit] = useState(24)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const currentFolderIdRef = useRef(currentFolderId)
@@ -71,11 +78,17 @@ export const MediaFolderBrowser: React.FC = () => {
     }
 
     const onPopState = () => {
-      const id = new URLSearchParams(window.location.search).get('folderId')
-      if (id === currentFolderIdRef.current) return
+      const params = new URLSearchParams(window.location.search)
+      const id = params.get('folderId')
+      const page = parseInt(params.get('page') ?? '1', 10) || 1
+      if (id === currentFolderIdRef.current) {
+        setMediaPage(page)
+        return
+      }
       currentFolderIdRef.current = id
       setLoading(true)
       setCurrentFolderId(id)
+      setMediaPage(page)
       if (id) {
         buildBreadcrumbFromId(id).then(setBreadcrumb).catch(() => {})
       } else {
@@ -93,22 +106,26 @@ export const MediaFolderBrowser: React.FC = () => {
         .then(data => {
           setFolders(data.docs ?? [])
           setMedia([])
+          setMediaTotalPages(1)
+          setMediaTotalDocs(0)
           setLoading(false)
         })
         .catch(() => setLoading(false))
     } else {
       Promise.all([
         fetch(`/api/media-folders?where[parent][equals]=${currentFolderId}&limit=100&depth=0`).then(r => r.json()),
-        fetch(`/api/media?where[folder][equals]=${currentFolderId}&limit=100&depth=0`).then(r => r.json()),
+        fetch(`/api/media?where[folder][equals]=${currentFolderId}&limit=${mediaLimit}&page=${mediaPage}&depth=0`).then(r => r.json()),
       ])
         .then(([folderData, mediaData]) => {
           setFolders(folderData.docs ?? [])
           setMedia(mediaData.docs ?? [])
+          setMediaTotalPages(mediaData.totalPages ?? 1)
+          setMediaTotalDocs(mediaData.totalDocs ?? 0)
           setLoading(false)
         })
         .catch(() => setLoading(false))
     }
-  }, [currentFolderId])
+  }, [currentFolderId, mediaPage, mediaLimit])
 
   useEffect(() => {
     if (!selectedMedia) return
@@ -123,12 +140,17 @@ export const MediaFolderBrowser: React.FC = () => {
     }
   }, [addingFolder])
 
-  const updateUrl = (folderId: string | null) => {
+  const updateUrl = (folderId: string | null, page = 1) => {
     const url = new URL(window.location.href)
     if (folderId) {
       url.searchParams.set('folderId', folderId)
     } else {
       url.searchParams.delete('folderId')
+    }
+    if (page > 1) {
+      url.searchParams.set('page', String(page))
+    } else {
+      url.searchParams.delete('page')
     }
     window.history.pushState({}, '', url.toString())
   }
@@ -137,10 +159,12 @@ export const MediaFolderBrowser: React.FC = () => {
     if (currentFolderId === null) return
     const [folderData, mediaData] = await Promise.all([
       fetch(`/api/media-folders?where[parent][equals]=${currentFolderId}&limit=100&depth=0`, { credentials: 'include' }).then(r => r.json()),
-      fetch(`/api/media?where[folder][equals]=${currentFolderId}&limit=100&depth=0`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/media?where[folder][equals]=${currentFolderId}&limit=${mediaLimit}&page=${mediaPage}&depth=0`, { credentials: 'include' }).then(r => r.json()),
     ])
     setFolders(folderData.docs ?? [])
     setMedia(mediaData.docs ?? [])
+    setMediaTotalPages(mediaData.totalPages ?? 1)
+    setMediaTotalDocs(mediaData.totalDocs ?? 0)
   }
 
   const handleUpload = async (files: FileList) => {
@@ -189,9 +213,10 @@ export const MediaFolderBrowser: React.FC = () => {
     setAddingFolder(false)
     setNewFolderName('')
     setCreateFolderError(null)
+    setMediaPage(1)
     setBreadcrumb(prev => [...prev, { id: folder.id, name: folder.name }])
     setCurrentFolderId(folder.id)
-    updateUrl(folder.id)
+    updateUrl(folder.id, 1)
   }
 
   const navigateTo = (index: number) => {
@@ -199,10 +224,11 @@ export const MediaFolderBrowser: React.FC = () => {
     setAddingFolder(false)
     setNewFolderName('')
     setCreateFolderError(null)
+    setMediaPage(1)
     const crumb = breadcrumb[index]
     setBreadcrumb(prev => prev.slice(0, index + 1))
     setCurrentFolderId(crumb.id)
-    updateUrl(crumb.id)
+    updateUrl(crumb.id, 1)
   }
 
   const panelOpen = selectedMedia !== null
@@ -497,6 +523,82 @@ export const MediaFolderBrowser: React.FC = () => {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Pagination controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={mediaPage <= 1}
+              onClick={() => {
+                const p = mediaPage - 1
+                setMediaPage(p)
+                updateUrl(currentFolderId, p)
+              }}
+              style={{
+                padding: '0.375rem 0.75rem',
+                background: 'var(--theme-elevation-100)',
+                border: '1px solid var(--theme-border-color)',
+                borderRadius: '4px',
+                fontSize: '0.875rem',
+                cursor: mediaPage <= 1 ? 'default' : 'pointer',
+                opacity: mediaPage <= 1 ? 0.4 : 1,
+                color: 'var(--theme-text)',
+              }}
+            >
+              ← Prev
+            </button>
+            {mediaTotalPages > 1 && (
+              <span style={{ fontSize: '0.875rem', color: 'var(--theme-text)', opacity: 0.8 }}>
+                Page {mediaPage} of {mediaTotalPages}
+                {mediaTotalDocs > 0 && <span style={{ opacity: 0.6 }}> ({mediaTotalDocs} items)</span>}
+              </span>
+            )}
+            <button
+              type="button"
+              disabled={mediaPage >= mediaTotalPages}
+              onClick={() => {
+                const p = mediaPage + 1
+                setMediaPage(p)
+                updateUrl(currentFolderId, p)
+              }}
+              style={{
+                padding: '0.375rem 0.75rem',
+                background: 'var(--theme-elevation-100)',
+                border: '1px solid var(--theme-border-color)',
+                borderRadius: '4px',
+                fontSize: '0.875rem',
+                cursor: mediaPage >= mediaTotalPages ? 'default' : 'pointer',
+                opacity: mediaPage >= mediaTotalPages ? 0.4 : 1,
+                color: 'var(--theme-text)',
+              }}
+            >
+              Next →
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.8rem', color: 'var(--theme-text)', opacity: 0.7, marginLeft: 'auto' }}>
+              Per page:
+              <select
+                value={mediaLimit}
+                onChange={e => {
+                  setMediaLimit(Number(e.target.value))
+                  setMediaPage(1)
+                  updateUrl(currentFolderId, 1)
+                }}
+                style={{
+                  padding: '0.25rem 0.375rem',
+                  border: '1px solid var(--theme-border-color)',
+                  borderRadius: '4px',
+                  fontSize: '0.8rem',
+                  background: 'var(--theme-bg)',
+                  color: 'var(--theme-text)',
+                  cursor: 'pointer',
+                }}
+              >
+                {[12, 24, 48, 96].map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </label>
           </div>
         </>
       )}

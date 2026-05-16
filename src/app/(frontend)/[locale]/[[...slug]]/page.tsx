@@ -41,8 +41,9 @@ async function getTenantIdBySlug(slug: string): Promise<string | null> {
     where: { slug: { equals: slug } },
     limit: 1,
   })
-  const id = result.docs[0]?.id
-  return id != null ? String(id) : null
+  const tenant = result.docs[0]
+  if (!tenant || tenant.active === false) return null
+  return tenant.id != null ? String(tenant.id) : null
 }
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
@@ -125,8 +126,9 @@ export async function generateStaticParams(): Promise<Array<{ locale: string; sl
         where: { slug: { equals: config.slug } },
         limit: 1,
       })
-      const tenantId = tenantResult.docs[0]?.id
-      if (!tenantId) continue
+      const tenantDoc = tenantResult.docs[0]
+      if (!tenantDoc?.id || tenantDoc.active === false) continue
+      const tenantId = tenantDoc.id
 
       for (const locale of config.locales.enabled) {
         const pages = await payload.find({

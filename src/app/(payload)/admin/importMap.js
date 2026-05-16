@@ -1,3 +1,5 @@
+import { TenantActiveField as TenantActiveField_7f3b5b7fd9191430c3880d02cad62d42 } from 'components/payloadCMS/TenantActiveField'
+import { TenantMediaFolderField as TenantMediaFolderField_67470aae8475acf931865891831db610 } from 'components/payloadCMS/TenantMediaFolderField'
 import { TenantPagesField as TenantPagesField_9cda045ef5232065815f07f56cd8de26 } from 'components/payloadCMS/TenantPagesField'
 import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { TenantField as TenantField_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
@@ -34,6 +36,8 @@ import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } f
 
 /** @type import('payload').ImportMap */
 export const importMap = {
+  "components/payloadCMS/TenantActiveField#TenantActiveField": TenantActiveField_7f3b5b7fd9191430c3880d02cad62d42,
+  "components/payloadCMS/TenantMediaFolderField#TenantMediaFolderField": TenantMediaFolderField_67470aae8475acf931865891831db610,
   "components/payloadCMS/TenantPagesField#TenantPagesField": TenantPagesField_9cda045ef5232065815f07f56cd8de26,
   "@payloadcms/plugin-multi-tenant/client#WatchTenantCollection": WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a,
   "@payloadcms/plugin-multi-tenant/client#TenantField": TenantField_1d0591e3cf4f332c83a86da13a0de59a,
