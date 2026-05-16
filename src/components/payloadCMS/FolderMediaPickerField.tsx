@@ -2,6 +2,7 @@
 import { useField } from '@payloadcms/ui'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { UploadModal } from './UploadModal'
 
 type Folder = { id: string; name: string }
 type MediaItem = {
@@ -50,24 +51,23 @@ const FolderPicker: React.FC<PickerProps> = ({ onSelect, onClose, initialFolderI
   const [mediaTotalDocs, setMediaTotalDocs] = useState(0)
   const [refreshKey, setRefreshKey] = useState(0)
   const LIMIT = 24
-  const uploadInputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !currentFolderId) return
+  const handleUpload = async (file: File) => {
+    if (!currentFolderId) return
     setUploading(true)
     const formData = new FormData()
     formData.append('file', file)
     formData.append('_payload', JSON.stringify({
       alt: file.name,
+      filename: file.name,
       folder: currentFolderId,
       ...(tenantId ? { tenant: tenantId } : {}),
     }))
     try {
       const res = await fetch('/api/media', { method: 'POST', body: formData })
       const json = await res.json() as { doc?: MediaItem } | MediaItem
-      // Payload v3 wraps response: { doc: { ... } }
       const uploaded: MediaItem = (json as { doc?: MediaItem }).doc ?? (json as MediaItem)
       if (uploaded?.id) {
         onSelect(uploaded)
@@ -78,7 +78,6 @@ const FolderPicker: React.FC<PickerProps> = ({ onSelect, onClose, initialFolderI
       setRefreshKey(k => k + 1)
     } finally {
       setUploading(false)
-      e.target.value = ''
     }
   }
 
@@ -230,7 +229,7 @@ const FolderPicker: React.FC<PickerProps> = ({ onSelect, onClose, initialFolderI
             <button
               type="button"
               disabled={uploading}
-              onClick={() => uploadInputRef.current?.click()}
+              onClick={() => setUploadModalOpen(true)}
               style={{
                 marginLeft: 'auto',
                 display: 'inline-flex',
@@ -250,12 +249,14 @@ const FolderPicker: React.FC<PickerProps> = ({ onSelect, onClose, initialFolderI
             >
               {uploading ? 'Uploading…' : '+ Upload image'}
             </button>
-            <input
-              ref={uploadInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleUpload}
+            <UploadModal
+              open={uploadModalOpen}
+              accepting="image/*"
+              onClose={() => setUploadModalOpen(false)}
+              onUpload={async (file) => {
+                setUploadModalOpen(false)
+                await handleUpload(file)
+              }}
             />
           </>
         )}

@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
+import { UploadModal } from './UploadModal'
 
 type Folder = { id: string; name: string }
 type MediaItem = {
@@ -63,7 +64,8 @@ export const MediaFolderBrowser: React.FC = () => {
   const [mediaLimit, setMediaLimit] = useState(24)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [dropFile, setDropFile] = useState<File | null>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const currentFolderIdRef = useRef(currentFolderId)
 
@@ -184,24 +186,19 @@ export const MediaFolderBrowser: React.FC = () => {
     }
   }
 
-  const handleUpload = async (files: FileList) => {
+  const handleUpload = async (file: File) => {
     setUploading(true)
     setUploadError(null)
-    let lastError: string | null = null
-    for (const file of Array.from(files)) {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('_payload', JSON.stringify({ folder: currentFolderId }))
-      const res = await fetch('/api/media', { method: 'POST', body: fd, credentials: 'include' })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        lastError = (err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? 'Upload failed'
-      }
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('_payload', JSON.stringify({ folder: currentFolderId, filename: file.name }))
+    const res = await fetch('/api/media', { method: 'POST', body: fd, credentials: 'include' })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      setUploadError((err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? 'Upload failed')
     }
-    if (lastError) setUploadError(lastError)
     await refreshContent()
     setUploading(false)
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleCreateFolder = async () => {
@@ -348,7 +345,7 @@ export const MediaFolderBrowser: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => setUploadModalOpen(true)}
               disabled={uploading}
               style={{
                 display: 'flex',
@@ -372,13 +369,17 @@ export const MediaFolderBrowser: React.FC = () => {
                 {uploadError}
               </span>
             )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*,application/pdf"
-              multiple
-              style={{ display: 'none' }}
-              onChange={e => { if (e.target.files?.length) handleUpload(e.target.files) }}
+            <UploadModal
+              key={dropFile?.name ?? 'btn'}
+              open={uploadModalOpen}
+              accepting="image/*,application/pdf"
+              defaultFile={dropFile}
+              onClose={() => { setUploadModalOpen(false); setDropFile(null) }}
+              onUpload={async (file) => {
+                setUploadModalOpen(false)
+                setDropFile(null)
+                await handleUpload(file)
+              }}
             />
           </div>
 
@@ -482,7 +483,10 @@ export const MediaFolderBrowser: React.FC = () => {
             onDrop={e => {
               e.preventDefault()
               setDragOver(false)
-              if (e.dataTransfer.files?.length) handleUpload(e.dataTransfer.files)
+              if (e.dataTransfer.files?.length) {
+                setDropFile(e.dataTransfer.files[0])
+                setUploadModalOpen(true)
+              }
             }}
             style={{
               borderRadius: '6px',
