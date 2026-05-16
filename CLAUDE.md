@@ -89,87 +89,19 @@ Example: `http://localhost:3000/tenant/acme.com/en/`
 
 ---
 
-## Architecture
+## Architecture & Conventions
 
-See `docs/ARCHITECTURE.md` for full detail. Summary below.
+Full detail in docs — read these before making structural changes:
 
-### Multi-tenant routing
+- `docs/ARCHITECTURE.md` — request flow, tenant registry, component isolation, content model, ISR caching
+- `docs/CONVENTIONS.md` — file structure, naming rules, Payload Pages rules, localization, seed patterns, ISR tags
+- `docs/ADDING_A_TENANT.md` — step-by-step: config → registry → components → TenantPageRenderer → seed → verify
 
-```
-Request
-  → middleware.ts            injects x-tenant-domain header from Host (prod)
-                             or /tenant/<domain> prefix (dev)
-  → app/(frontend)/[locale]/[[...slug]]/page.tsx
-      resolveTenant(domain)  → TenantConfig (from in-memory registry)
-      getPage(tenantId, slug) → Page (from Payload DB, ISR-cached)
-      TenantPageRenderer     → tenant-specific React component tree
-```
+### Key invariants (quick ref)
 
-Middleware is Edge-compatible and intentionally thin — it only injects the domain header. All config/DB access happens in Node.js page components.
-
-### Tenant registry
-
-Each tenant lives in `src/tenants/<slug>/`:
-
-```
-src/tenants/<slug>/
-  tenant.config.ts   # TenantConfig — domains, locales, theme tokens, nav
-  seed.ts            # idempotent DB seed for pages + media
-```
-
-`src/tenants/registry.ts` imports all configs and validates them against `TenantConfigSchema` at startup. Add new tenants there. This file is imported by middleware (Edge) — no Node.js-only imports.
-
-### Content model — design in code, content in CMS
-
-**Payload CMS stores only content**: text fields, rich text, and image uploads. Layout, HTML structure, and visual design are never stored in the CMS.
-
-Each `Page` document has:
-- `slug` — URL path segment (`home` → `/`)
-- `pageTemplate` — free-text key mapping to a tenant component (e.g. `landing`, `portfolio-item`)
-- Structured content groups: `heroSection`, `featuresSection`, `bodyContent`, `contactDetails`, `ctaSection`, `meta`
-
-Editors can only modify text and images. They cannot alter layout or component structure.
-
-### Tenant component isolation
-
-**No components are shared between tenants.** Every tenant has its own complete component tree under `src/tenants/<slug>/components/`:
-
-```
-src/tenants/<slug>/
-  tenant.config.ts
-  seed.ts
-  components/
-    Nav.tsx            # top navigation
-    Footer.tsx         # footer
-    pages/
-      LandingPage.tsx  # one file per page template
-      AboutPage.tsx
-      ...
-    renderer.tsx       # owns layout: Nav + main + Footer, maps pageTemplate → page component
-```
-
-`TenantPageRenderer` (`src/components/layouts/TenantPageRenderer.tsx`) dispatches to the right tenant renderer by `config.slug`. It must never import from another tenant's directory.
-
-### Flexible page tree
-
-Page structure is per-tenant, defined in `tenant.config.ts` via `navigation` and `enabledPages` — no platform-wide enum. A tenant can use any template keys (`portfolio`, `case-study`, `team`, etc.) without touching platform code.
-
-`pageTemplate` on each Page document is a free-text string. The tenant's `renderer.tsx` maps it to the correct page component. Nav and Footer are rendered by `renderer.tsx`, not by individual page components.
-
-### ISR caching + revalidation
-
-Pages are cached with `unstable_cache` tagged by `tenant:locale:slug`. Payload `afterChange`/`afterDelete` hooks call `revalidateTag` to surgically bust cache when editors save. Tag helpers are in `src/lib/revalidation/`.
-
----
-
-## After schema changes
-
-When changing Payload collection schemas (adding fields, renaming, etc.):
-
-```bash
-pnpm migrate:create   # scaffold SQL migration for the schema change
-pnpm migrate          # apply pending migrations to the DB
-pnpm generate:types   # regenerate src/payload-types.ts
-```
-
-`payload-types.ts` is gitignored and auto-generated. Always regenerate it after migrations.
+- No shared components between tenants. All UI under `src/tenants/<slug>/components/`.
+- `renderer.tsx` owns full layout (Nav + main + Footer). Page components render content sections only.
+- Payload CMS stores text + images only. Layout/design never in CMS.
+- `registry.ts` is Edge-safe — no Node.js-only imports.
+- ISR tags: use `buildTag` / `buildRevalidationTags` from `src/lib/revalidation/tags.ts`. Never hardcode.
+- After any Payload schema change: `pnpm migrate:create` → `pnpm migrate` → `pnpm generate:types`.

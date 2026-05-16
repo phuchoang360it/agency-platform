@@ -23,8 +23,25 @@ function formatBytes(bytes?: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+async function buildBreadcrumbFromId(folderId: string): Promise<Crumb[]> {
+  const chain: Crumb[] = []
+  let currentId: string | null = folderId
+  while (currentId) {
+    const data = await fetch(`/api/media-folders/${currentId}?depth=0`).then(r => r.json()) as { name: string; parent?: string | { id: string } }
+    chain.unshift({ id: currentId, name: data.name })
+    const parent: string | { id: string } | undefined = data.parent
+    currentId = parent
+      ? (typeof parent === 'string' ? parent : (parent as { id: string }).id)
+      : null
+  }
+  return [{ id: null, name: 'All folders' }, ...chain]
+}
+
 export const MediaFolderBrowser: React.FC = () => {
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null)
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
+    if (typeof window === 'undefined') return null
+    return new URLSearchParams(window.location.search).get('folderId')
+  })
   const [breadcrumb, setBreadcrumb] = useState<Crumb[]>([{ id: null, name: 'All folders' }])
   const [folders, setFolders] = useState<Folder[]>([])
   const [media, setMedia] = useState<MediaItem[]>([])
@@ -39,6 +56,35 @@ export const MediaFolderBrowser: React.FC = () => {
   const [createFolderError, setCreateFolderError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
+  const currentFolderIdRef = useRef(currentFolderId)
+
+  useEffect(() => {
+    currentFolderIdRef.current = currentFolderId
+  }, [currentFolderId])
+
+  useEffect(() => {
+    const folderId = typeof window !== 'undefined'
+      ? new URLSearchParams(window.location.search).get('folderId')
+      : null
+    if (folderId) {
+      buildBreadcrumbFromId(folderId).then(setBreadcrumb).catch(() => {})
+    }
+
+    const onPopState = () => {
+      const id = new URLSearchParams(window.location.search).get('folderId')
+      if (id === currentFolderIdRef.current) return
+      currentFolderIdRef.current = id
+      setLoading(true)
+      setCurrentFolderId(id)
+      if (id) {
+        buildBreadcrumbFromId(id).then(setBreadcrumb).catch(() => {})
+      } else {
+        setBreadcrumb([{ id: null, name: 'All folders' }])
+      }
+    }
+    window.addEventListener('popstate', onPopState)
+    return () => window.removeEventListener('popstate', onPopState)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (currentFolderId === null) {
@@ -76,6 +122,16 @@ export const MediaFolderBrowser: React.FC = () => {
       folderInputRef.current.focus()
     }
   }, [addingFolder])
+
+  const updateUrl = (folderId: string | null) => {
+    const url = new URL(window.location.href)
+    if (folderId) {
+      url.searchParams.set('folderId', folderId)
+    } else {
+      url.searchParams.delete('folderId')
+    }
+    window.history.pushState({}, '', url.toString())
+  }
 
   const refreshContent = async () => {
     if (currentFolderId === null) return
@@ -135,6 +191,7 @@ export const MediaFolderBrowser: React.FC = () => {
     setCreateFolderError(null)
     setBreadcrumb(prev => [...prev, { id: folder.id, name: folder.name }])
     setCurrentFolderId(folder.id)
+    updateUrl(folder.id)
   }
 
   const navigateTo = (index: number) => {
@@ -145,6 +202,7 @@ export const MediaFolderBrowser: React.FC = () => {
     const crumb = breadcrumb[index]
     setBreadcrumb(prev => prev.slice(0, index + 1))
     setCurrentFolderId(crumb.id)
+    updateUrl(crumb.id)
   }
 
   const panelOpen = selectedMedia !== null
