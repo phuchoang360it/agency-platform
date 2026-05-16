@@ -92,8 +92,16 @@ export default buildConfig({
         'media-folders': {},
       },
 
+      // We define the tenants array field manually in Users.ts for custom access + condition
+      tenantsArrayField: {
+        includeDefaultField: false,
+      },
+
+      useUsersTenantFilter: false,
+
       userHasAccessToAllTenants: (user) => {
-        return (user as { roles?: string[] })?.roles?.includes('super-admin') ?? false
+        const u = user as unknown as { roles?: string; accessAllTenants?: boolean }
+        return u.roles === 'super-admin' || u.roles === 'admin' || u.accessAllTenants === true
       },
     }),
   ],
@@ -114,7 +122,7 @@ export default buildConfig({
       }
       await payload.create({
         collection: 'users',
-        data: { email, password, roles: ['super-admin'] },
+        data: { email, password, roles: 'super-admin' },
       })
       payload.logger.info(`Root user created: ${email}`)
     }

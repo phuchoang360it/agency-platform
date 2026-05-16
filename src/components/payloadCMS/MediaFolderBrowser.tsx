@@ -97,7 +97,7 @@ export const MediaFolderBrowser: React.FC = () => {
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (currentFolderId === null) {
