@@ -90,7 +90,16 @@ export const Pages: CollectionConfig = {
                 { name: 'subheading', type: 'text', localized: true },
                 { name: 'ctaLabel', type: 'text', localized: true, label: 'CTA Label' },
                 { name: 'ctaHref', type: 'text', label: 'CTA Link' },
-                { name: 'backgroundImage', type: 'upload', relationTo: 'media' },
+                {
+                  name: 'backgroundImage',
+                  type: 'upload',
+                  relationTo: 'media',
+                  admin: {
+                    components: {
+                      Field: 'components/payloadCMS/FolderMediaPickerField#FolderMediaPickerField',
+                    },
+                  },
+                },
               ],
             },
             {
@@ -191,7 +200,16 @@ export const Pages: CollectionConfig = {
               fields: [
                 { name: 'title', type: 'text', localized: true },
                 { name: 'description', type: 'textarea', localized: true },
-                { name: 'ogImage', type: 'upload', relationTo: 'media' },
+                {
+                  name: 'ogImage',
+                  type: 'upload',
+                  relationTo: 'media',
+                  admin: {
+                    components: {
+                      Field: 'components/payloadCMS/FolderMediaPickerField#FolderMediaPickerField',
+                    },
+                  },
+                },
               ],
             },
           ],

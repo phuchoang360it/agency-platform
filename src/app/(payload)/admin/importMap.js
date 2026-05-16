@@ -4,6 +4,7 @@ import { TenantPagesField as TenantPagesField_9cda045ef5232065815f07f56cd8de26 }
 import { WatchTenantCollection as WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { TenantField as TenantField_1d0591e3cf4f332c83a86da13a0de59a } from '@payloadcms/plugin-multi-tenant/client'
 import { TenantBreadcrumb as TenantBreadcrumb_c5f7f84fc68a71ee211662dcf99432be } from 'components/payloadCMS/TenantBreadcrumb'
+import { FolderMediaPickerField as FolderMediaPickerField_b9b51af05cf476880a7fbae774544061 } from 'components/payloadCMS/FolderMediaPickerField'
 import { RscEntryLexicalCell as RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { RscEntryLexicalField as RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
 import { LexicalDiffComponent as LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e } from '@payloadcms/richtext-lexical/rsc'
@@ -42,6 +43,7 @@ export const importMap = {
   "@payloadcms/plugin-multi-tenant/client#WatchTenantCollection": WatchTenantCollection_1d0591e3cf4f332c83a86da13a0de59a,
   "@payloadcms/plugin-multi-tenant/client#TenantField": TenantField_1d0591e3cf4f332c83a86da13a0de59a,
   "components/payloadCMS/TenantBreadcrumb#TenantBreadcrumb": TenantBreadcrumb_c5f7f84fc68a71ee211662dcf99432be,
+  "components/payloadCMS/FolderMediaPickerField#FolderMediaPickerField": FolderMediaPickerField_b9b51af05cf476880a7fbae774544061,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalCell": RscEntryLexicalCell_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#RscEntryLexicalField": RscEntryLexicalField_44fe37237e0ebf4470c9990d8cb7b07e,
   "@payloadcms/richtext-lexical/rsc#LexicalDiffComponent": LexicalDiffComponent_44fe37237e0ebf4470c9990d8cb7b07e,

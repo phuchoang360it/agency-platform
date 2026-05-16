@@ -65,8 +65,9 @@ export default buildConfig({
             const endpoint = process.env.S3_ENDPOINT ?? 'http://localhost:9000'
             const bucket = process.env.S3_BUCKET ?? 'media'
             const slug = docPrefix || 'media'
+            const encodedPrefix = slug.split('/').map(encodeURIComponent).join('/')
             // Path-style URL required for MinIO: http://host:9000/bucket/tenant/file
-            return `${endpoint}/${bucket}/${slug}/${fname}`
+            return `${endpoint}/${bucket}/${encodedPrefix}/${encodeURIComponent(fname)}`
           },
         },
       },
