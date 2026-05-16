@@ -61,6 +61,8 @@ export const MediaFolderBrowser: React.FC = () => {
   const [mediaTotalPages, setMediaTotalPages] = useState(1)
   const [mediaTotalDocs, setMediaTotalDocs] = useState(0)
   const [mediaLimit, setMediaLimit] = useState(24)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
   const currentFolderIdRef = useRef(currentFolderId)
@@ -165,6 +167,21 @@ export const MediaFolderBrowser: React.FC = () => {
     setMedia(mediaData.docs ?? [])
     setMediaTotalPages(mediaData.totalPages ?? 1)
     setMediaTotalDocs(mediaData.totalDocs ?? 0)
+  }
+
+  const handleDelete = async () => {
+    if (!selectedMedia) return
+    setDeleting(true)
+    try {
+      await fetch(`/api/media/${selectedMedia.id}`, { method: 'DELETE', credentials: 'include' })
+      setMedia(prev => prev.filter(m => m.id !== selectedMedia.id))
+      setMediaTotalDocs(prev => prev - 1)
+      setDeleteConfirmOpen(false)
+      setSelectedMedia(null)
+      await refreshContent()
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleUpload = async (files: FileList) => {
@@ -635,6 +652,51 @@ export const MediaFolderBrowser: React.FC = () => {
           transition: 'transform 0.22s ease',
         }}
       >
+        {deleteConfirmOpen && selectedMedia && (
+          <>
+            <div
+              onClick={() => setDeleteConfirmOpen(false)}
+              style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 200 }}
+            />
+            <div style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'var(--theme-bg)',
+              border: '1px solid var(--theme-border-color)',
+              borderRadius: '8px',
+              padding: '1.5rem',
+              zIndex: 201,
+              width: '360px',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+            }}>
+              <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: 'var(--theme-text)' }}>Delete image?</h3>
+              <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--theme-text)', opacity: 0.7 }}>
+                &quot;{selectedMedia.filename}&quot; will be permanently deleted.
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmOpen(false)}
+                  disabled={deleting}
+                  style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: '1px solid var(--theme-border-color)', background: 'none', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--theme-text)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', background: 'var(--theme-error)', color: '#FF0000', cursor: deleting ? 'not-allowed' : 'pointer', fontSize: '0.875rem', opacity: deleting ? 0.7 : 1 }}
+                >
+                  {deleting ? 'Deleting…' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
         {selectedMedia && (
           <>
             {/* Panel header */}
@@ -682,7 +744,7 @@ export const MediaFolderBrowser: React.FC = () => {
             </div>
 
             {/* Edit button */}
-            <div style={{ padding: '1rem 1.25rem', borderTop: '1px solid var(--theme-border-color)' }}>
+            <div style={{ padding: '1rem 1.25rem 0.5rem', borderTop: '1px solid var(--theme-border-color)' }}>
               <a
                 href={`/admin/collections/media/${selectedMedia.id}`}
                 style={{
@@ -699,6 +761,29 @@ export const MediaFolderBrowser: React.FC = () => {
               >
                 Open editor
               </a>
+            </div>
+
+            {/* Delete button */}
+            <div style={{ padding: '0 1.25rem 1rem' }}>
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(true)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'center',
+                  padding: '0.625rem 1rem',
+                  background: 'var(--theme-error)',
+                  color: '#FF0000',
+                  borderRadius: '4px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                Delete
+              </button>
             </div>
           </>
         )}

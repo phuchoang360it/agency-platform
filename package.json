@@ -24,6 +24,7 @@
     "tenant:seed": "tsx scripts/tenant-seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1045.0",
     "@payloadcms/db-postgres": "^3.0.0",
     "@payloadcms/live-preview": "^3.84.1",
     "@payloadcms/live-preview-react": "^3.84.1",

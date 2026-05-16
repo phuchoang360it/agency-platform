@@ -62,9 +62,69 @@ export const Media: CollectionConfig = {
           return data
         }
       },
+      async ({ data, originalDoc, operation, req }) => {
+        if (
+          operation !== 'update' ||
+          !originalDoc?.filename ||
+          !data.filename ||
+          data.filename === originalDoc.filename ||
+          req.file
+        ) return data
+
+        const { S3Client, CopyObjectCommand, DeleteObjectCommand } = await import('@aws-sdk/client-s3')
+
+        const s3 = new S3Client({
+          endpoint: process.env.S3_ENDPOINT,
+          region: process.env.S3_REGION ?? 'us-east-1',
+          credentials: {
+            accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',
+            secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? '',
+          },
+          forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+        })
+
+        const bucket = process.env.S3_BUCKET ?? 'media'
+        const prefix = (originalDoc.prefix as string | null) || 'media'
+        const oldBase = (originalDoc.filename as string).replace(/\.[^.]+$/, '')
+        const newBase = (data.filename as string).replace(/\.[^.]+$/, '')
+
+        const renameObject = async (oldFilename: string, newFilename: string) => {
+          const oldKey = `${prefix}/${oldFilename}`
+          const newKey = `${prefix}/${newFilename}`
+          await s3.send(new CopyObjectCommand({ Bucket: bucket, CopySource: `${bucket}/${oldKey}`, Key: newKey }))
+          await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: oldKey }))
+        }
+
+        await renameObject(originalDoc.filename as string, data.filename as string)
+
+        const prevSizes = originalDoc.sizes as Record<string, { filename?: string } | null> | undefined
+        if (prevSizes) {
+          const updatedSizes: Record<string, unknown> = {}
+          for (const [sizeName, sizeData] of Object.entries(prevSizes)) {
+            if (!sizeData?.filename) continue
+            const newSizeFilename = sizeData.filename.replace(oldBase, newBase)
+            await renameObject(sizeData.filename, newSizeFilename)
+            updatedSizes[sizeName] = { ...sizeData, filename: newSizeFilename }
+          }
+          return { ...data, sizes: { ...prevSizes, ...updatedSizes } }
+        }
+
+        return data
+      },
     ],
   },
   fields: [
+    {
+      name: 'filename',
+      type: 'text',
+      required: true,
+      label: 'File Name',
+      admin: {
+        hidden: false,
+        readOnly: false,
+        disableBulkEdit: false,
+      },
+    },
     {
       name: 'alt',
       type: 'text',

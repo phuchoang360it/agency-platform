@@ -1,4 +1,4 @@
-import type { CollectionConfig, FieldAccess } from 'payload'
+import type { CollectionConfig, FieldAccess, Where } from 'payload'
 import { isSuperAdmin, isAdminOrAbove, adminOrAboveAccess } from '@/lib/access/roles'
 
 const adminOrAboveFieldAccess: FieldAccess = ({ req: { user } }) => isAdminOrAbove(user)
@@ -12,7 +12,7 @@ export const Users: CollectionConfig = {
     hidden: ({ user }) => !isAdminOrAbove(user),
   },
   access: {
-    read: ({ req: { user } }) => {
+    read: ({ req: { user } }): boolean | Where => {
       if (!user) return false
       if (isAdminOrAbove(user)) return { roles: { not_equals: 'super-admin' } }
       return { id: { equals: user.id } }
