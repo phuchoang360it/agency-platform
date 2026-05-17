@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## vexp — Context-Aware AI Coding <!-- vexp v2.0.12 -->
+## vexp — Context-Aware AI Coding <!-- vexp v2.0.16 -->
 
 ### MANDATORY: use vexp pipeline — do NOT grep or glob the codebase
 For every task — bug fixes, features, refactors, debugging:
@@ -105,3 +105,53 @@ Full detail in docs — read these before making structural changes:
 - `registry.ts` is Edge-safe — no Node.js-only imports.
 - ISR tags: use `buildTag` / `buildRevalidationTags` from `src/lib/revalidation/tags.ts`. Never hardcode.
 - After any Payload schema change: `pnpm migrate:create` → `pnpm migrate` → `pnpm generate:types`.
+
+---
+
+## Payload Collections
+
+| Slug | File | Purpose |
+|---|---|---|
+| `pages` | `src/collections/Pages.ts` | Page content per tenant + locale |
+| `tenants` | `src/collections/Tenants.ts` | Tenant DB rows (linked to config) |
+| `users` | `src/collections/Users.ts` | Auth users with role + tenant assignments |
+| `media` | `src/collections/Media.ts` | Files stored in MinIO/S3; has `folder` relationship |
+| `media-folders` | `src/collections/MediaFolders.ts` | Folder hierarchy for media organization |
+
+---
+
+## PayloadCMS Custom Editor UI
+
+All custom Payload admin components live in `src/components/payloadCMS/`. **Do not recreate these.**
+
+| Component | Purpose |
+|---|---|
+| `MediaFolderBrowser.tsx` | Full media manager: folder tree, grid view, upload, delete |
+| `UploadModal.tsx` | Upload via drag/drop OR URL fetch (renames to given filename) |
+| `MediaListView.tsx` | Replaces Payload default list view for `media` collection |
+| `FolderMediaPickerField.tsx` | Relationship field — opens MediaFolderBrowser to pick an image |
+| `TenantPagesField.tsx` | Custom field on Tenants — lists scoped pages inline |
+| `TenantBreadcrumb.tsx` | Admin header breadcrumb showing tenant context |
+| `TenantActiveField.tsx` | Shows tenant active/inactive state in admin |
+| `TenantMediaFolderField.tsx` | Links tenant to its root media folder |
+
+New CMS UI → create in `src/components/payloadCMS/`, register in `payload.config.ts` via `admin.components`.
+
+---
+
+## Role System
+
+Three roles on `User.roles` field: `super-admin` (one max) → `admin` → `editor` (tenant-scoped).
+
+- Editor scope: `user.tenants[].tenant` array, or `accessAllTenants: true` flag
+- **Always use helpers from `src/lib/access/roles.ts`** — never compare `user.roles` inline
+- Key helpers: `isSuperAdmin`, `isAdminOrAbove`, `adminOrAboveAccess`, `selfOrAdminOrAboveAccess`
+
+---
+
+## Active Tenants
+
+| Slug | Purpose |
+|---|---|
+| `acme` | Production tenant — reference implementation |
+| `__fixture__` | Test/fixture tenant — do not use for real client work |

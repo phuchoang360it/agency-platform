@@ -21,6 +21,16 @@ export const Tenants: CollectionConfig = {
   },
   fields: [
     {
+      name: 'websiteLink',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: 'components/payloadCMS/TenantGoToWebsiteField#TenantGoToWebsiteField',
+        },
+      },
+    },
+    {
       name: 'active',
       type: 'checkbox',
       defaultValue: true,

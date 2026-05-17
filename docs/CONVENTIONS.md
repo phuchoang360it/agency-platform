@@ -104,3 +104,46 @@ pnpm generate:types   # regenerate src/payload-types.ts
 Format: `tenant:<slug>`, `tenant:<slug>:<locale>`, `tenant:<slug>:<locale>:<page-slug>`
 
 Use `buildTag` and `buildRevalidationTags` from `src/lib/revalidation/tags.ts`. Never hardcode tag strings.
+
+---
+
+## PayloadCMS custom components
+
+All custom Payload admin UI components live in `src/components/payloadCMS/`. This directory is **platform-level only** — no tenant-specific logic.
+
+| Convention | Rule |
+|---|---|
+| Location | `src/components/payloadCMS/<ComponentName>.tsx` |
+| Naming | PascalCase; suffix describes the Payload concept: `*Field`, `*View`, `*Modal`, `*Browser` |
+| Registration | In `payload.config.ts` via Payload's `admin.components` API |
+| Isolation | No tenant-specific imports; no cross-tenant logic |
+
+Before building any new Payload admin UI, check `src/components/payloadCMS/` — it may already exist.
+
+---
+
+## Access control
+
+Always import from `src/lib/access/roles.ts`. Never compare `user.roles` as a string inline.
+
+**Collection-level pattern:**
+```ts
+import { adminOrAboveAccess } from '@/lib/access/roles'
+
+access: {
+  read: adminOrAboveAccess,
+  create: adminOrAboveAccess,
+  update: adminOrAboveAccess,
+  delete: adminOrAboveAccess,
+}
+```
+
+**Field-level pattern:**
+```ts
+import type { FieldAccess } from 'payload'
+import { isAdminOrAbove } from '@/lib/access/roles'
+
+const adminField: FieldAccess = ({ req: { user } }) => isAdminOrAbove(user)
+```
+
+**Editor tenant scope:** Editors are scoped to `user.tenants[].tenant` (relationship array). When querying on behalf of an editor, filter by their assigned tenant IDs. `accessAllTenants: true` bypasses this filter.

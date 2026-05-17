@@ -183,3 +183,50 @@ pnpm generate:importmap  # updates src/app/(payload)/admin/importMap.js
 pnpm migrate:create      # scaffolds the SQL migration
 pnpm migrate             # applies it
 ```
+
+---
+
+## PayloadCMS editor layer
+
+Custom React components in `src/components/payloadCMS/` extend the Payload admin UI. These are platform-level — no tenant-specific logic goes here.
+
+| Component | Role |
+|---|---|
+| `MediaFolderBrowser` | Full media manager: navigates folder tree, grid view of files, upload trigger, delete |
+| `UploadModal` | Two upload modes: file drag/drop, or URL fetch (downloads + renames to given filename) |
+| `MediaListView` | Replaces Payload's default list view for the `media` collection |
+| `FolderMediaPickerField` | Relationship field that opens `MediaFolderBrowser` to select an image |
+| `TenantPagesField` | Custom field on `Tenants` collection — lists that tenant's pages inline |
+| `TenantBreadcrumb` | Breadcrumb in admin header showing current tenant context |
+| `TenantActiveField` | Shows tenant active/inactive state |
+| `TenantMediaFolderField` | Links a tenant to its root media folder |
+
+Adding new CMS UI: create component in `src/components/payloadCMS/`, register in `payload.config.ts` via Payload's `admin.components` API.
+
+---
+
+## Role-based access
+
+Three roles stored as a single `roles` field on User (`src/collections/Users.ts`):
+
+| Role | Scope | Key constraint |
+|---|---|---|
+| `super-admin` | Everything | Only one permitted — enforced in `beforeChange` hook |
+| `admin` | All tenants | Can manage editors; cannot escalate to admin/super-admin |
+| `editor` | Tenant-scoped | Via `user.tenants[].tenant` array, or `accessAllTenants: true` |
+
+All access control helpers are in `src/lib/access/roles.ts`. Never compare `user.roles` inline — always use these functions: `isSuperAdmin`, `isAdmin`, `isAdminOrAbove`, `adminOrAboveAccess`, `selfOrAdminOrAboveAccess`, `superAdminFieldAccess`.
+
+---
+
+## Media system
+
+`Media` collection — files stored in MinIO/S3 via Payload's upload adapter. Each file has a `folder` relationship field pointing to a `MediaFolders` document.
+
+`MediaFolders` collection — folder hierarchy: `name` + `parent` (self-referential relationship). Folders are UI-only organization; files are flat in S3.
+
+`resolveFolderPath()` in `src/collections/Media.ts` — resolves folder ancestry chain to a full path string (e.g. `Acme GmbH/Photos`).
+
+**Tenant media convention:** each tenant seed calls `upsertMediaFolder(payload, config.name)` to create a root folder named after the tenant. All seeded images pass the returned `folderId` to `seedMedia()`.
+
+MinIO/S3 unavailability at seed time is non-fatal: `seedMedia` logs a warning and skips.
